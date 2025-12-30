@@ -75,6 +75,7 @@ function requireAuthOrRedirect() {
 }
 
 function currentRoleLabel() {
+  if (isProfessor()) return "Professor";
   return state.user.role || "Student";
 }
 
