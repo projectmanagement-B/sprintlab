@@ -634,7 +634,6 @@ function screenLanding() {
           <div class="landing-mark">SL</div>
           <div class="landing-name">SprintLab</div>
         </div>
-        <button class="btn btn-ghost landing-signin" id="btnLandingLogin">Sign In</button>
       </div>
 
       <div class="landing-hero">
