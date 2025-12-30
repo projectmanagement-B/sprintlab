@@ -56,6 +56,7 @@ function loadState() {
 function setRoute(route, params = {}) {
   state.nav.route = route;
   state.nav.params = params;
+  if (state.ui) state.ui.profileMenuOpen = false;
   saveState();
   render();
 }
@@ -377,6 +378,7 @@ function defaultState() {
       params: {}
     },
     ui: {
+      profileMenuOpen: false,
       dashboard: {
         search: "",
         filterOpen: false,
@@ -454,6 +456,8 @@ function defaultState() {
 
 let state = loadState() || defaultState();
 
+const RESET_STATE_ON_LOAD = true;
+
 /* -----------------------------
    3) Header Builder 
 -------------------------------- */
@@ -490,6 +494,20 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
        </button>`
     : "";
 
+  const profileMenu = state.auth.isLoggedIn && state.ui.profileMenuOpen
+    ? `
+      <div id="profileMenu" class="card" style="position:absolute;top:44px;right:0;z-index:20;padding:8px;min-width:170px;">
+        <button class="btn btn-ghost btn-full" id="btnProfileDashboard" style="text-align:left;padding:10px 12px;">
+          ${icon("layout-dashboard")} <span style="margin-left:8px;">Dashboard</span>
+        </button>
+      </div>
+    `
+    : "";
+
+  const profileWrap = state.auth.isLoggedIn
+    ? `<div style="position:relative;">${profileBtn}${profileMenu}</div>`
+    : "";
+
   const logoutBtn = state.auth.isLoggedIn
     ? `<button class="btn btn-ghost" id="btnLogout" style="padding:8px 10px;border-radius:10px;display:flex;align-items:center;gap:6px;">
          ${icon("log-out")}
@@ -512,7 +530,7 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
         ${backBtn}
         ${showRolePill ? rolePill(role) : ""}
         ${renounceBtn}
-        ${profileBtn}
+        ${profileWrap}
         ${logoutBtn}
       </div>
     </div>
@@ -682,7 +700,12 @@ function screenDashboard() {
   return `
     ${header({ title: "SprintLab" })}
     <div class="screen">
-      <h1 style="margin-bottom:10px;">Available Scenarios</h1>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;">
+        <h1 style="margin:0;">Available Scenarios</h1>
+        <button class="btn btn-secondary" id="btnTemplates" style="padding:10px 12px;border-radius:12px;">
+          Templates
+        </button>
+      </div>
 
       <div class="card" style="padding:12px;display:flex;gap:10px;align-items:center;">
         <div style="flex:1;display:flex;gap:8px;align-items:center;">
@@ -750,6 +773,68 @@ function scenarioCard(s) {
   `;
 }
 
+function screenTemplates() {
+  if (!requireAuthOrRedirect()) return "";
+
+  const list = DATA.scenarios.map(s => s);
+
+  return `
+    ${header({ title: "SprintLab", subtitle: "Scenario templates", showBack: true, backRoute: "home" })}
+    <div class="screen">
+      <h1 style="margin-bottom:6px;">Scenario Templates</h1>
+      <p style="margin-bottom:14px;">Browse predefined scenarios for class exercises.</p>
+
+      <div class="card" style="padding:12px;margin-bottom:12px;">
+        <div class="small" style="margin-bottom:8px;">Filters (static in MVP)</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          ${["All", "Intro", "Intermediate", "Advanced"].map(level => `
+            <button class="btn btn-secondary"
+                    style="padding:8px 10px;border-radius:999px;font-size:12px;">
+              ${escapeHtml(level)}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      <div style="display:grid;gap:12px;">
+        ${list.map(s => templateCard(s)).join("")}
+      </div>
+
+      <div class="safe-area"></div>
+    </div>
+  `;
+}
+
+function templateCard(s) {
+  const statusBadge =
+    s.status === "In progress"
+      ? badge("Active", "success")
+      : badge("Template", "gray");
+
+  const difficulty = s.id === "scenario01" ? "Intro" : "TBD";
+
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div>
+          <h2 style="font-size:16px;margin-bottom:6px;">${escapeHtml(s.title)}</h2>
+          <p>${escapeHtml(s.short || "A ready-to-use project scenario.")}</p>
+          <div class="small" style="margin-top:8px;">Difficulty: ${escapeHtml(difficulty)}</div>
+        </div>
+        <div>${statusBadge}</div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button class="btn btn-primary"
+                data-view-template="${escapeHtml(s.id)}"
+                style="padding:10px 12px;border-radius:12px;">
+          View overview
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function screenScenarioOverview() {
   if (!requireAuthOrRedirect()) return "";
 
@@ -757,6 +842,7 @@ function screenScenarioOverview() {
   if (!scen) return screenDashboard();
 
   const subtitle = scen.title;
+  const backRoute = state.nav.params.from === "templates" ? "templates" : "home";
 
   const personaCards = (scen.personas || []).map(p => `
     <div class="card" style="padding:12px;">
@@ -771,13 +857,16 @@ function screenScenarioOverview() {
     : "";
 
   return `
-    ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "home" })}
+    ${header({ title: "SprintLab", subtitle, showBack: true, backRoute })}
     <div class="screen">
-      <h1 style="margin-bottom:6px;">Scenario 01</h1>
-      <p style="margin-bottom:14px;">Returns Management App</p>
+      <h1 style="margin-bottom:6px;">${escapeHtml(scen.title)}</h1>
+      <p style="margin-bottom:14px;">${escapeHtml(scen.short || "Scenario overview")}</p>
 
       <h2 style="margin:14px 0 8px;">Overview</h2>
-      <p>${escapeHtml(scen.overview || "")}</p>
+      ${scen.overview
+        ? `<p>${escapeHtml(scen.overview)}</p>`
+        : `<div class="info-box">Detailed overview coming soon for this scenario.</div>`
+      }
 
       <h2 style="margin:18px 0 8px;">Goals</h2>
       <div class="card" style="padding:12px;">
@@ -803,7 +892,13 @@ function screenScenarioOverview() {
         </ul>
       </div>
 
-      ${createBtn}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+        <button class="btn btn-secondary" id="btnBackToScenarios" data-back-route="${escapeHtml(backRoute)}">
+          Back to scenarios
+        </button>
+        <button class="btn btn-primary" id="btnContinueRoles">Continue to role selection</button>
+        ${createBtn}
+      </div>
 
       <div class="safe-area"></div>
     </div>
@@ -901,14 +996,11 @@ function screenHub() {
 
   const subtitle = `${scen.title} ${currentRoleLabel() !== "Student" ? " • " + currentRoleLabel() : ""}`;
 
-  // Simple progress: requirements = any chat or overview visited; backlog = backlog touched; testing = any task completed; outcome = reflection or reached outcome
-  const act = state.activity[scen.id] || { backlogTouchedIds: [], chatCount: 0 };
-  const hasReq = act.chatCount > 0; // proxy
-  const hasBacklog = (act.backlogTouchedIds || []).length > 0;
-
-  const roleTasks = state.workspace[scen.id]?.[currentRoleLabel()]?.tasksDone || {};
-  const hasTesting = Object.values(roleTasks).some(Boolean);
-  const hasOutcome = (state.reflections[scen.id] || "").trim().length > 0;
+  // Progress bar is static in the hub: complete through Backlog.
+  const hasReq = true;
+  const hasBacklog = true;
+  const hasTesting = false;
+  const hasOutcome = false;
 
   const stepClass = (cond) => cond ? "step active" : "step";
 
@@ -1456,6 +1548,7 @@ function render() {
     case "login": html = screenLogin(); break;
     case "register": html = screenRegister(); break;
     case "home": html = screenDashboard(); break;
+    case "templates": html = screenTemplates(); break;
     case "overview": html = screenScenarioOverview(); break;
     case "roles": html = screenRoleDistribution(); break;
     case "hub": html = screenHub(); break;
@@ -1485,6 +1578,28 @@ function render() {
    6) Event Binding
 -------------------------------- */
 function bindGlobalActions() {
+  const profile = document.getElementById("btnProfile");
+  if (profile) {
+    profile.addEventListener("click", () => {
+      state.ui.profileMenuOpen = !state.ui.profileMenuOpen;
+      saveState();
+      render();
+    });
+  }
+
+  const dash = document.getElementById("btnProfileDashboard");
+  if (dash) {
+    dash.addEventListener("click", () => {
+      state.ui.profileMenuOpen = false;
+      saveState();
+      if (!state.user.selectedScenarioId) {
+        state.user.selectedScenarioId = "scenario01";
+        saveState();
+      }
+      setRoute("hub");
+    });
+  }
+
   const logout = document.getElementById("btnLogout");
   if (logout) {
     logout.addEventListener("click", () => {
@@ -1540,6 +1655,7 @@ function bindRouteActions(route) {
   if (route === "login") bindLogin();
   if (route === "register") bindRegister();
   if (route === "home") bindDashboard();
+  if (route === "templates") bindTemplates();
   if (route === "overview") bindOverview();
   if (route === "roles") bindRoles();
   if (route === "hub") bindHub();
@@ -1681,6 +1797,11 @@ function bindRegister() {
 }
 
 function bindDashboard() {
+  const templates = document.getElementById("btnTemplates");
+  if (templates) {
+    templates.addEventListener("click", () => setRoute("templates"));
+  }
+
   const search = document.getElementById("scenarioSearch");
   if (search) {
     search.addEventListener("input", (e) => {
@@ -1730,13 +1851,36 @@ function bindDashboard() {
       const id = btn.getAttribute("data-open-scenario");
       state.user.selectedScenarioId = id;
       saveState();
-      // Go to hub directly (matches your screenshots)
-      setRoute("hub");
+      setRoute("overview", { from: "home" });
+    });
+  });
+}
+
+function bindTemplates() {
+  document.querySelectorAll("[data-view-template]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-view-template");
+      state.user.selectedScenarioId = id;
+      saveState();
+      setRoute("overview", { from: "templates" });
     });
   });
 }
 
 function bindOverview() {
+  const backBtn = document.getElementById("btnBackToScenarios");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      const r = backBtn.getAttribute("data-back-route") || "home";
+      setRoute(r);
+    });
+  }
+
+  const contBtn = document.getElementById("btnContinueRoles");
+  if (contBtn) {
+    contBtn.addEventListener("click", () => setRoute("roles"));
+  }
+
   // Create Active Scenario (professor)
   const btn = document.getElementById("btnCreateActive");
   if (btn) {
@@ -2036,6 +2180,10 @@ header = function (opts = {}) {
    9) Initial Route
 -------------------------------- */
 (function init() {
+  if (RESET_STATE_ON_LOAD) {
+    state = defaultState();
+    saveState();
+  }
   // If logged in but no route, go home
   if (state.auth.isLoggedIn) {
     if (!state.nav.route || state.nav.route === "login") state.nav.route = "home";
