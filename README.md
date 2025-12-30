@@ -1,3 +1,4 @@
+
 # SprintLab – MVP PM Simulator
 
 **SprintLab** is a lightweight, browser-based simulation tool designed to teach Product Management concepts. It creates a realistic environment where students can assume Agile roles (Product Owner, Business Analyst, Developer, Tester), interact with simulated stakeholders, manage product backlogs, and track project outcomes.
@@ -89,8 +90,7 @@ The application comes pre-loaded with simulated accounts. You can also register 
 ├── index.html      # Entry point, loads CSS/JS and contains the root #app div
 ├── styles.css      # All styling (Reset, iPhone frame, Landing Page, Components)
 └── app.js          # Logic (State management, Routing, Data, Event Handling)
-
-``
+```
 
 ---
 
@@ -106,4 +106,3 @@ The application comes pre-loaded with simulated accounts. You can also register 
 ## 📄 License
 
 This project is open-source and intended for educational purposes.
-
