@@ -531,6 +531,9 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
         <button class="btn btn-ghost btn-full" id="btnProfileDashboard" style="text-align:left;padding:10px 12px;">
           ${icon("layout-dashboard")} <span style="margin-left:8px;">ScenarioHub</span>
         </button>
+        <button class="btn btn-ghost btn-full" id="btnProfileLogout" style="text-align:left;padding:10px 12px;">
+          ${icon("log-out")} <span style="margin-left:8px;">Log out</span>
+        </button>
       </div>
     `
     : "";
@@ -539,11 +542,7 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
     ? `<div style="position:relative;">${profileBtn}${profileMenu}</div>`
     : "";
 
-  const logoutBtn = state.auth.isLoggedIn
-    ? `<button class="btn btn-ghost" id="btnLogout" style="padding:8px 10px;border-radius:10px;display:flex;align-items:center;gap:6px;">
-         ${icon("log-out")}
-       </button>`
-    : "";
+  const logoutBtn = "";
 
   const sub = subtitle ? `<div class="subtle">${escapeHtml(subtitle)}</div>` : "";
 
@@ -1713,9 +1712,10 @@ function bindGlobalActions() {
     });
   }
 
-  const logout = document.getElementById("btnLogout");
+  const logout = document.getElementById("btnProfileLogout");
   if (logout) {
     logout.addEventListener("click", () => {
+      state.ui.profileMenuOpen = false;
       state.auth.isLoggedIn = false;
       state.auth.email = "";
       state.user.email = "";
