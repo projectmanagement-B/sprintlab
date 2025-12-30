@@ -544,6 +544,13 @@ let state = loadState() || defaultState();
 
 const RESET_STATE_ON_LOAD = true;
 
+function applyAppScale() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const scale = Math.min((w * 0.96) / 390, (h * 0.96) / 844, 1);
+  document.documentElement.style.setProperty("--scale", scale.toFixed(4));
+}
+
 /* -----------------------------
    3) Header Builder 
 -------------------------------- */
@@ -2465,6 +2472,8 @@ header = function (opts = {}) {
    9) Initial Route
 -------------------------------- */
 (function init() {
+  applyAppScale();
+  window.addEventListener("resize", applyAppScale);
   if (RESET_STATE_ON_LOAD) {
     state = defaultState();
     saveState();
