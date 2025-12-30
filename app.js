@@ -292,29 +292,52 @@ const DATA = {
   chatScripts: {
     customer: [
       {
-        match: ["return window", "eligible", "eligibility", "30"],
+        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+        topic: "greeting",
+        reply:
+          "Hi! I can share how I want returns to work. Ask me about deadlines, labels, status updates, or photos."
+      },
+      {
+        match: ["return window", "eligible", "eligibility", "30", "deadline", "timeframe", "policy", "days"],
+        topic: "eligibility",
         reply:
           "I expect to return items within 30 days of purchase. If it's outside that, the app should clearly tell me I can't return it."
       },
       {
-        match: ["label", "shipping"],
+        match: ["label", "shipping", "print", "printer", "qr", "drop off", "dropoff", "carrier"],
+        topic: "label",
         reply:
           "I want a shipping label right after I submit the return—ideally downloadable. If something fails, I need clear instructions."
       },
       {
-        match: ["status", "track", "tracking"],
+        match: ["status", "track", "tracking", "where", "update", "progress"],
+        topic: "status",
         reply:
           "I want to see the status in my account: Requested → Shipped → Received → Approved → Refunded. I also want to know what to do next."
       },
       {
-        match: ["refund", "money"],
+        match: ["refund", "money", "reimburse", "payment", "credit", "timeline", "how long"],
+        topic: "refund",
         reply:
           "Refund time should be transparent. If it takes 5–7 days, the app should show that and confirm when the refund is initiated."
       },
       {
-        match: ["reason", "dropdown"],
+        match: ["reason", "dropdown", "defective", "wrong size", "changed mind", "comment", "notes"],
+        topic: "reasons",
         reply:
           "Give me simple reasons like 'Defective', 'Wrong size', 'Changed mind', and a comments box. Keep it fast."
+      },
+      {
+        match: ["photo", "image", "picture", "damage", "damaged"],
+        topic: "photo",
+        reply:
+          "If I can upload a photo of the damage, that should speed up approval. It should be optional but easy to add."
+      },
+      {
+        match: ["account", "history", "order"],
+        topic: "order",
+        reply:
+          "I want to start the return from my order history so I don't have to re-enter details."
       },
       {
         match: [],
@@ -325,24 +348,40 @@ const DATA = {
 
     warehouse: [
       {
-        match: ["received", "receive"],
+        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+        topic: "greeting",
+        reply:
+          "Hello. I can explain our receiving and inspection flow. Ask about scanning, inspection, or exceptions."
+      },
+      {
+        match: ["received", "receive", "arrival", "dock", "check in"],
+        topic: "receive",
         reply:
           "We need an easy way to mark a return as Received, and we should scan/enter a tracking code to link it to the request."
       },
       {
-        match: ["inspection", "verify"],
+        match: ["inspection", "verify", "damage", "condition", "approve", "reject"],
+        topic: "inspection",
         reply:
           "After receiving, we must inspect: approved vs rejected, plus reason. That decision should update the customer status."
       },
       {
-        match: ["inventory", "stock"],
+        match: ["inventory", "stock", "restock", "resell"],
+        topic: "inventory",
         reply:
           "If the item is approved and resellable, inventory should be updated. For MVP, a placeholder note is fine."
       },
       {
-        match: ["exceptions", "damaged"],
+        match: ["exceptions", "damaged", "missing", "wrong item"],
+        topic: "exceptions",
         reply:
           "Rejected returns should include a reason and optionally photos (future). For MVP, reason text is enough."
+      },
+      {
+        match: ["barcode", "scan", "scanner", "label"],
+        topic: "barcode",
+        reply:
+          "Barcode scanning should pull up the exact return request immediately, otherwise processing slows down."
       },
       {
         match: [],
@@ -353,24 +392,40 @@ const DATA = {
 
     manager: [
       {
-        match: ["success", "criteria"],
+        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+        topic: "greeting",
+        reply:
+          "Hi. I can outline priorities, risks, and success metrics. Ask about scope or policy."
+      },
+      {
+        match: ["success", "criteria", "kpi", "metric"],
+        topic: "metrics",
         reply:
           "Success means fewer manual steps, faster cycle time, and fewer customer complaints. Status visibility is key."
       },
       {
-        match: ["scope", "mvp", "capacity"],
+        match: ["scope", "mvp", "capacity", "trade-off", "tradeoff", "prioritize"],
+        topic: "scope",
         reply:
           "Keep MVP focused on the happy path: submit return, label, tracking statuses, warehouse verify, refund placeholder."
       },
       {
-        match: ["risk", "failure"],
+        match: ["risk", "failure", "edge case", "exceptions"],
+        topic: "risks",
         reply:
           "Risks include unclear eligibility rules and inconsistent status updates. Ensure the UI explains rules at each step."
       },
       {
-        match: ["analytics", "dashboard"],
+        match: ["analytics", "dashboard", "report", "insights"],
+        topic: "analytics",
         reply:
           "Analytics is nice-to-have. Prioritize core flow first, then add a basic view of reasons/volume as a placeholder."
+      },
+      {
+        match: ["refund", "policy", "timeline"],
+        topic: "refund",
+        reply:
+          "Refund policy should be explicit so support and customers are aligned on timing and expectations."
       },
       {
         match: [],
@@ -1316,6 +1371,12 @@ function screenChat() {
     warehouse: "Hint: Ask about inspection steps or damage criteria.",
     manager: "Hint: Ask about exceptions and success criteria."
   };
+
+  const guides = {
+    customer: ["Return deadline", "Shipping label", "Status tracking", "Upload photo"],
+    warehouse: ["Receive & scan", "Inspection outcome", "Damage reasons", "Barcode lookup"],
+    manager: ["MVP scope", "Refund policy", "Success metrics", "Risks"]
+  };
   const hintText = isProfessor()
     ? "Professor view: review message history (UI-only)."
     : (hints[stakeholderId] || "Hint: Ask about return deadlines.");
@@ -1327,6 +1388,14 @@ function screenChat() {
         <div style="padding:16px;border-bottom:1px solid #e5e7eb;background:#fff;">
           <div style="font-weight:600;font-size:15px;">${escapeHtml(persona.name)} <span class="small">(${escapeHtml(persona.subtitle)})</span></div>
           <div class="small" style="margin-top:6px;">${escapeHtml(hintText)}</div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+            ${(guides[stakeholderId] || []).map(g => `
+              <button class="btn btn-secondary" data-guide-text="${escapeHtml(g)}"
+                      style="padding:4px 10px;border-radius:999px;font-size:11px;">
+                ${escapeHtml(g)}
+              </button>
+            `).join("")}
+          </div>
         </div>
 
         <div class="chat-messages" id="chatMessages">
@@ -2142,6 +2211,7 @@ function bindChat() {
   const input = document.getElementById("chatInput");
   const send = document.getElementById("btnSend");
   const msgBox = document.getElementById("chatMessages");
+  const guideBtns = document.querySelectorAll("[data-guide-text]");
 
   function scrollToBottom() {
     if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
@@ -2153,17 +2223,95 @@ function bindChat() {
     chatState.messages.push({ from, text, ts: nowIso() });
   }
 
-  function scriptedReply() {
-    if (stakeholderId === "customer") {
-      return "I want to return items quickly without printing a label.";
-    }
-    if (stakeholderId === "warehouse") {
-      return "I need to know if the item is damaged before approving.";
-    }
+  function scriptedReply(userText) {
     const scripts = DATA.chatScripts[stakeholderId] || [];
+    const t = String(userText || "").toLowerCase();
+    for (const s of scripts) {
+      if (!s.match || s.match.length === 0) continue;
+      if (s.match.some(k => t.includes(k))) {
+        if (!state.chats[scen.id][stakeholderId].context) {
+          state.chats[scen.id][stakeholderId].context = {};
+        }
+        if (s.topic) state.chats[scen.id][stakeholderId].context.lastTopic = s.topic;
+        return roleAwareReply(s.reply, s.topic);
+      }
+    }
+    // default reply is last entry with empty match or fallback
     const fallback = scripts.find(s => !s.match || s.match.length === 0);
+    const lastTopic = state.chats[scen.id][stakeholderId].context?.lastTopic;
+    if (lastTopic) return followUpReply(lastTopic);
     return fallback ? fallback.reply : "Thanks—could you clarify what you need?";
   }
+
+  function roleAwareReply(baseReply, topic) {
+    const role = currentRoleLabel();
+    if (isProfessor()) return baseReply;
+    const roleHints = {
+      PO: {
+        eligibility: "As PO, make sure the 30-day rule is explicit in the scope.",
+        label: "As PO, include label delivery as a high-priority story.",
+        status: "As PO, keep status labels consistent across screens.",
+        refund: "As PO, align refund timing with policy and support."
+      },
+      BA: {
+        eligibility: "As BA, clarify eligibility edge cases and error messaging.",
+        label: "As BA, capture label failure states and acceptance criteria.",
+        status: "As BA, define status transitions and timestamps.",
+        refund: "As BA, document refund timeline and triggers."
+      },
+      Dev: {
+        eligibility: "As Dev, validate rules and surface eligibility errors.",
+        label: "As Dev, plan label generation and PDF download flow.",
+        status: "As Dev, implement status updates and notifications.",
+        refund: "As Dev, handle refund state and retry logic."
+      },
+      Tester: {
+        eligibility: "As Tester, add cases for out-of-window returns.",
+        label: "As Tester, validate label download and failure messages.",
+        status: "As Tester, verify each status change path.",
+        refund: "As Tester, test refund timing and error messaging."
+      }
+    };
+    const hint = roleHints[role]?.[topic];
+    return hint ? `${baseReply} ${hint}` : baseReply;
+  }
+
+  function followUpReply(topic) {
+    const followUps = {
+      customer: {
+        eligibility: "Also, the app should show the exact last eligible return date.",
+        label: "If I can't print, a QR code for drop-off would be ideal.",
+        status: "Show me what action I should take at each status.",
+        refund: "A confirmation message when refund is initiated would help.",
+        photo: "Let me upload from my phone camera, not just files."
+      },
+      warehouse: {
+        receive: "We should log the receiving time for audit purposes.",
+        inspection: "We need a quick reject reason list to speed up processing.",
+        barcode: "If scanning fails, manual lookup should still be possible.",
+        exceptions: "Flag exceptions so the manager can review quickly."
+      },
+      manager: {
+        scope: "Keep MVP tight; we can add analytics later.",
+        metrics: "Cycle time and approval rate are the key indicators.",
+        risks: "Inconsistent status updates create support tickets.",
+        refund: "Policy clarity reduces escalations."
+      }
+    };
+    const reply = followUps[stakeholderId]?.[topic];
+    return reply || "Could you share more specifics so I can respond clearly?";
+  }
+
+  guideBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const text = btn.getAttribute("data-guide-text") || "";
+      if (input) {
+        input.value = text;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+  });
 
   if (send) {
     send.addEventListener("click", () => {
@@ -2189,7 +2337,7 @@ function bindChat() {
 
       setTimeout(() => {
         if (!state.chats[scen.id]?.[stakeholderId]?.messages?.[typingIdx]) return;
-        state.chats[scen.id][stakeholderId].messages[typingIdx].text = scriptedReply();
+        state.chats[scen.id][stakeholderId].messages[typingIdx].text = scriptedReply(text);
         saveState();
         render();
       }, 1000);
