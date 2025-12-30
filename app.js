@@ -122,20 +122,20 @@ const DATA = {
         {
           id: "customer",
           name: "Customer",
-          subtitle: "End User",
-          bio: "Wants to return products easily and track return status."
+          subtitle: "End-user requesting returns.",
+          bio: "Wants a simple, fast return experience with clear updates."
         },
         {
           id: "warehouse",
           name: "Warehouse Operator",
-          subtitle: "Operations Staff",
-          bio: "Processes physical returns and updates inventory."
+          subtitle: "Physical inspection & processing.",
+          bio: "Inspects returns and processes approvals or rejections."
         },
         {
           id: "manager",
           name: "Returns Manager",
-          subtitle: "Management",
-          bio: "Oversees operations, approves refunds, analyzes return trends."
+          subtitle: "Process oversight & exceptions.",
+          bio: "Oversees return workflows and resolves exceptions."
         }
       ],
       successCriteria: [
@@ -165,7 +165,37 @@ const DATA = {
   backlog: {
     scenario01: [
       {
-        id: 1,
+        id: "US-01",
+        title: "Customer submits return request with photo",
+        roles: ["PO", "BA", "Dev", "Tester"],
+        priority: "High",
+        status: "To Do",
+        story:
+          "As a Customer, I want to upload a photo of the damaged item so that my return is approved faster.",
+        ac: [
+          "Photo upload is available in the return request form",
+          "Accepted formats are JPG and PNG",
+          "Photo is optional but recommended",
+          "User sees a confirmation after upload"
+        ]
+      },
+      {
+        id: "US-02",
+        title: "Warehouse operator scans package barcode",
+        roles: ["BA", "Dev", "Tester"],
+        priority: "Medium",
+        status: "In Progress",
+        story:
+          "As a Warehouse Op, I want to scan a barcode on the package so I can look up the order instantly.",
+        ac: [
+          "Scanner input captures barcode value",
+          "System finds the matching return request",
+          "If barcode is invalid, show a clear error",
+          "Lookup results show order summary"
+        ]
+      },
+      {
+        id: "US-03",
         title: "Customer can initiate return request",
         roles: ["PO", "BA", "Dev"],
         priority: "High",
@@ -181,7 +211,7 @@ const DATA = {
         ]
       },
       {
-        id: 2,
+        id: "US-04",
         title: "System generates return shipping label",
         roles: ["PO", "Dev"],
         priority: "High",
@@ -196,7 +226,7 @@ const DATA = {
         ]
       },
       {
-        id: 3,
+        id: "US-05",
         title: "Real-time return status tracking",
         roles: ["PO", "BA", "Dev"],
         priority: "High",
@@ -211,7 +241,7 @@ const DATA = {
         ]
       },
       {
-        id: 4,
+        id: "US-06",
         title: "Warehouse operator verifies returned item",
         roles: ["BA", "Dev", "Tester"],
         priority: "Medium",
@@ -226,7 +256,7 @@ const DATA = {
         ]
       },
       {
-        id: 5,
+        id: "US-07",
         title: "Automated refund processing",
         roles: ["PO", "Dev", "Tester"],
         priority: "Medium",
@@ -241,7 +271,7 @@ const DATA = {
         ]
       },
       {
-        id: 6,
+        id: "US-08",
         title: "Returns analytics dashboard (basic)",
         roles: ["PO", "BA"],
         priority: "Low",
@@ -463,7 +493,8 @@ const RESET_STATE_ON_LOAD = true;
 -------------------------------- */
 function header({ title = "SprintLab", subtitle = "", showBack = false, backRoute = null, backParams = {} } = {}) {
   const role = currentRoleLabel();
-  const showRolePill = state.auth.isLoggedIn && state.user.selectedScenarioId;
+  const selected = getSelectedScenario();
+  const showRolePill = state.auth.isLoggedIn && state.user.selectedScenarioId && selected && selected.active;
 
   const renounceBtn =
     state.auth.isLoggedIn &&
@@ -483,8 +514,8 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
       : "";
 
   const backBtn = showBack
-    ? `<button class="btn btn-ghost" id="btnBack" style="padding:8px 10px;border-radius:10px;font-size:12px;display:flex;align-items:center;gap:6px;">
-         ${icon("arrow-left")} <span>Back</span>
+    ? `<button class="btn btn-ghost" id="btnBack" style="padding:8px;border-radius:10px;display:flex;align-items:center;gap:6px;">
+         ${icon("arrow-left")}
        </button>`
     : "";
 
@@ -498,7 +529,7 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
     ? `
       <div id="profileMenu" class="card" style="position:absolute;top:44px;right:0;z-index:20;padding:8px;min-width:170px;">
         <button class="btn btn-ghost btn-full" id="btnProfileDashboard" style="text-align:left;padding:10px 12px;">
-          ${icon("layout-dashboard")} <span style="margin-left:8px;">Dashboard</span>
+          ${icon("layout-dashboard")} <span style="margin-left:8px;">ScenarioHub</span>
         </button>
       </div>
     `
@@ -540,6 +571,46 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
 /* -----------------------------
    4) Screens – Render Functions
 -------------------------------- */
+function screenLanding() {
+  return `
+    <div class="landing">
+      <div class="landing-topbar">
+        <div class="landing-brand">
+          <div class="landing-mark">SL</div>
+          <div class="landing-name">SprintLab</div>
+        </div>
+        <button class="btn btn-ghost landing-signin" id="btnLandingLogin">Sign In</button>
+      </div>
+
+      <div class="landing-hero">
+        <div class="landing-pill">AI-Powered Product Team Simulator</div>
+        <h1>SprintLab – AI-Powered Product Team Simulator</h1>
+        <p class="landing-subhead">
+          Bridge the gap between theory and practice. Experience role-based, scenario-driven project management with AI simulated stakeholders.
+        </p>
+        <button class="btn btn-primary landing-cta" id="btnStartLearning">
+          Start Learning <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <div class="landing-feature-row">
+        <div class="landing-feature">
+          <div class="landing-feature-title">Simulated Stakeholders</div>
+          <div class="landing-feature-desc">Practice requirements gathering with AI customers who push back and change their minds.</div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-title">Role-Based Learning</div>
+          <div class="landing-feature-desc">Distinct workspaces for PO, BA, Dev, and Tester.</div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-title">Safe Failure</div>
+          <div class="landing-feature-desc">Experiment with trade-offs in a risk-free environment.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function screenLogin() {
   const errs = state.ui.auth.loginErrors || {};
   const form = state.ui.auth.loginForm || { email: "", password: "" };
@@ -838,7 +909,8 @@ function templateCard(s) {
 function screenScenarioOverview() {
   if (!requireAuthOrRedirect()) return "";
 
-  const scen = getSelectedScenario();
+  const scenId = state.nav.params.templateId || state.user.selectedScenarioId;
+  const scen = DATA.scenarios.find(s => s.id === scenId);
   if (!scen) return screenDashboard();
 
   const subtitle = scen.title;
@@ -852,8 +924,12 @@ function screenScenarioOverview() {
     </div>
   `).join("");
 
-  const createBtn = isProfessor()
+  const createBtn = isProfessor() && scen.active
     ? `<button class="btn btn-primary" id="btnCreateActive" style="margin-top:12px;">Create active scenario</button>`
+    : "";
+
+  const continueBtn = scen.active
+    ? `<button class="btn btn-primary" id="btnContinueRoles">Continue to role selection</button>`
     : "";
 
   return `
@@ -896,7 +972,7 @@ function screenScenarioOverview() {
         <button class="btn btn-secondary" id="btnBackToScenarios" data-back-route="${escapeHtml(backRoute)}">
           Back to scenarios
         </button>
-        <button class="btn btn-primary" id="btnContinueRoles">Continue to role selection</button>
+        ${continueBtn}
         ${createBtn}
       </div>
 
@@ -1003,6 +1079,8 @@ function screenHub() {
   const hasOutcome = false;
 
   const stepClass = (cond) => cond ? "step active" : "step";
+  const doneCount = [hasReq, hasBacklog, hasTesting, hasOutcome].filter(Boolean).length || 1;
+  const progressClass = `progress-${doneCount}`;
 
   return `
     ${header({ title: "SprintLab", subtitle })}
@@ -1012,7 +1090,7 @@ function screenHub() {
 
       <div class="progress-card">
         <div style="font-weight:600;margin-bottom:10px;">Progress</div>
-        <div class="progress-steps">
+        <div class="progress-steps ${progressClass}">
           <div class="${stepClass(hasReq)}">
             <div class="step-circle">1</div>
             <div class="step-label">Requirements</div>
@@ -1048,7 +1126,7 @@ function screenHub() {
 
 function hubTile(title, desc, iconName, route) {
   return `
-    <div class="card" data-go="${escapeHtml(route)}" style="cursor:pointer;">
+    <div class="card hub-card" data-go="${escapeHtml(route)}" style="cursor:pointer;">
       <div class="card-icon">${icon(iconName)}</div>
       <div class="card-title">${escapeHtml(title)}</div>
       <div class="card-desc">${escapeHtml(desc)}</div>
@@ -1087,6 +1165,11 @@ function screenWorkspace() {
       <div class="card-icon">${icon("list-checks")}</div>
       <div class="card-title">View Backlog</div>
       <div class="card-desc">Review and update items</div>
+    </div>
+    <div class="card" style="margin-top:12px;cursor:pointer;" data-go="${escapeHtml(isProfessor() ? "prof_outcome" : "outcome")}">
+      <div class="card-icon">${icon("trending-up")}</div>
+      <div class="card-title">Outcome & Summary</div>
+      <div class="card-desc">Wrap up and reflect on results</div>
     </div>
   `;
 
@@ -1228,9 +1311,14 @@ function screenChat() {
     <div class="message ${m.from === "user" ? "user" : "ai"}">${escapeHtml(m.text)}</div>
   `).join("");
 
+  const hints = {
+    customer: "Hint: Ask about return deadlines or label requirements.",
+    warehouse: "Hint: Ask about inspection steps or damage criteria.",
+    manager: "Hint: Ask about exceptions and success criteria."
+  };
   const hintText = isProfessor()
     ? "Professor view: review message history (UI-only)."
-    : `Hint: Ask about eligibility, label, status tracking, or acceptance criteria from your role (${currentRoleLabel()}).`;
+    : (hints[stakeholderId] || "Hint: Ask about return deadlines.");
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "stakeholders" })}
@@ -1246,7 +1334,7 @@ function screenChat() {
         </div>
 
         <div class="chat-input">
-          <textarea id="chatInput" rows="2" placeholder="Type your question…"></textarea>
+          <textarea id="chatInput" rows="2" placeholder="Type your question..."></textarea>
           <button class="btn btn-primary" id="btnSend" style="padding:10px 12px;border-radius:12px;">Send</button>
         </div>
       </div>
@@ -1294,6 +1382,15 @@ function screenBacklog() {
       <h1 style="margin-bottom:6px;">Product Backlog</h1>
       <p>View and manage backlog items</p>
 
+      <div style="display:flex;gap:10px;margin:12px 0;">
+        <button class="btn btn-secondary" id="btnBackToHub" style="flex:1;">
+          Back to Scenario Home
+        </button>
+        <button class="btn btn-secondary" id="btnBackToWorkspace" style="flex:1;">
+          Back to Workspace
+        </button>
+      </div>
+
       ${selects}
 
       ${list || `<div class="info-box">No items match the selected filters.</div>`}
@@ -1320,7 +1417,7 @@ function backlogRow(item) {
     <div class="backlog-item" data-open-item="${escapeHtml(item.id)}" style="cursor:pointer;background:#fff;">
       <div class="backlog-header">
         <div style="display:flex;gap:8px;align-items:center;">
-          <div class="small">#${escapeHtml(item.id)}</div>
+          <div class="small">${escapeHtml(item.id)}</div>
           <div style="font-weight:600;">${escapeHtml(item.title)}</div>
         </div>
         <div style="color:#94a3b8;">${icon("chevron-right")}</div>
@@ -1341,7 +1438,7 @@ function screenBacklogDetail() {
   const scen = getSelectedScenario();
   if (!scen) return screenDashboard();
 
-  const itemId = Number(state.nav.params.itemId);
+  const itemId = state.nav.params.itemId;
   const items = DATA.backlog[scen.id] || [];
   const idx = items.findIndex(i => i.id === itemId);
   const item = items[idx];
@@ -1351,7 +1448,7 @@ function screenBacklogDetail() {
   const act = state.activity[scen.id] || (state.activity[scen.id] = { backlogTouchedIds: [], chatCount: 0 });
   if (!act.backlogTouchedIds.includes(itemId)) act.backlogTouchedIds.push(itemId);
 
-  const subtitle = `${scen.title} • Backlog #${itemId}`;
+  const subtitle = `${scen.title} - Backlog ${itemId}`;
 
   const priorityChip =
     item.priority === "High" ? badge("Priority: High", "warning") :
@@ -1376,7 +1473,7 @@ function screenBacklogDetail() {
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "backlog" })}
     <div class="screen">
-      <div class="small" style="margin-bottom:6px;">#${escapeHtml(item.id)} ${roleTags}</div>
+      <div class="small" style="margin-bottom:6px;">${escapeHtml(item.id)} ${roleTags}</div>
       <h1 style="margin-bottom:10px;">${escapeHtml(item.title)}</h1>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
@@ -1396,6 +1493,13 @@ function screenBacklogDetail() {
         </ul>
       </div>
 
+      <h2 style="margin:18px 0 10px;">Role Notes</h2>
+      <div class="card">
+        <div class="small" style="margin-bottom:8px;">${escapeHtml(currentRoleLabel())} Notes</div>
+        <textarea rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:12px;resize:none;"
+          placeholder="Add notes or decisions for this item (UI-only)."></textarea>
+      </div>
+
       <h2 style="margin:18px 0 10px;">Role Responsibilities (concept)</h2>
       <div class="card" style="padding:12px;">
         <div class="small" style="margin-bottom:8px;"><b>PO:</b> prioritize value; accept scope</div>
@@ -1409,6 +1513,10 @@ function screenBacklogDetail() {
         ${nextBtn}
       </div>
 
+      <button class="btn btn-secondary btn-full" id="btnBackToBacklog" style="margin-top:12px;">
+        Back to Backlog
+      </button>
+
       <div class="safe-area"></div>
     </div>
   `;
@@ -1419,45 +1527,49 @@ function screenOutcomeStudent() {
   const scen = getSelectedScenario();
   if (!scen) return screenDashboard();
 
-  const subtitle = `${scen.title} • ${currentRoleLabel()}`;
-
-  const act = state.activity[scen.id] || { backlogTouchedIds: [], chatCount: 0 };
-  const touched = act.backlogTouchedIds.length;
-  const chats = act.chatCount;
-
-  const reflection = state.reflections[scen.id] || "";
+  const subtitle = `${scen.title} - ${currentRoleLabel()}`;
+  const stepClass = "step active";
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "hub" })}
     <div class="screen">
-      <h1 style="margin-bottom:6px;">Outcome Summary</h1>
+      <h1 style="margin-bottom:6px;">Simulation Outcome – Scenario 01</h1>
       <p style="margin-bottom:14px;">Review your progress and reflect on the experience</p>
 
-      <h2 style="margin:12px 0 10px;">Timeline</h2>
-      <div class="card">
-        ${timelineRow("Requirements Gathering", "Dec 5, 2024")}
-        ${timelineRow("Backlog Refinement", "Dec 6, 2024")}
-        ${timelineRow("Test Planning", "Dec 8, 2024")}
-        ${timelineRow("Outcome Review", "Dec 10, 2024")}
+      <h2 style="margin:12px 0 10px;">Step Timeline</h2>
+      <div class="progress-card">
+        <div class="progress-steps progress-3">
+          <div class="${stepClass}">
+            <div class="step-circle">1</div>
+            <div class="step-label">Clarify Requirements</div>
+          </div>
+          <div class="${stepClass}">
+            <div class="step-circle">2</div>
+            <div class="step-label">Refine Backlog</div>
+          </div>
+          <div class="${stepClass}">
+            <div class="step-circle">3</div>
+            <div class="step-label">Plan Tests</div>
+          </div>
+        </div>
       </div>
 
-      <h2 style="margin:18px 0 10px;">Key Highlights</h2>
+      <h2 style="margin:18px 0 10px;">Highlights</h2>
       <div class="card">
-        <div class="small" style="margin-bottom:10px;">✓ Interviewed stakeholders and gathered requirements</div>
-        <div class="small" style="margin-bottom:10px;">✓ Stakeholder chats: <b>${escapeHtml(chats)}</b></div>
-        <div class="small" style="margin-bottom:10px;">✓ Backlog items opened: <b>${escapeHtml(touched)}</b></div>
-        <div class="small">✓ Reviewed role workspace tasks (UI-only)</div>
+        <div class="small" style="margin-bottom:10px;">Decisions made: <b>5</b></div>
+        <div class="small" style="margin-bottom:10px;">Stakeholder Chats: <b>3</b></div>
+        <div class="small">Backlog Items Refined: <b>2</b></div>
       </div>
 
       <h2 style="margin:18px 0 10px;">Reflection</h2>
       <div class="card">
         <div class="small" style="margin-bottom:8px;color:#64748b;">
-          Guiding questions: What went well? What would you change? What did you learn about trade-offs?
+          Reflection: What went well in this sprint? What would you change?
         </div>
         <textarea id="reflectionInput" rows="5" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:12px;resize:none;"
-          placeholder="Type your reflection (student-only, saved locally)">${escapeHtml(reflection)}</textarea>
-        <button class="btn btn-primary btn-full" id="btnSaveReflection" style="margin-top:12px;">Save Reflection</button>
-        <button class="btn btn-secondary btn-full" id="btnExitToDashboard" style="margin-top:10px;">Exit to Home</button>
+          placeholder="Type your reflection..."></textarea>
+        <button class="btn btn-secondary btn-full" id="btnBackToHub" style="margin-top:12px;">Back to Scenario Home</button>
+        <button class="btn btn-secondary btn-full" id="btnExitToDashboard" style="margin-top:10px;">Exit to Dashboard</button>
       </div>
 
       <div class="safe-area"></div>
@@ -1545,6 +1657,7 @@ function render() {
   let html = "";
 
   switch (state.nav.route) {
+    case "landing": html = screenLanding(); break;
     case "login": html = screenLogin(); break;
     case "register": html = screenRegister(); break;
     case "home": html = screenDashboard(); break;
@@ -1559,7 +1672,7 @@ function render() {
     case "backlog_detail": html = screenBacklogDetail(); break;
     case "outcome": html = screenOutcomeStudent(); break;
     case "prof_outcome": html = screenOutcomeProfessor(); break;
-    default: html = screenLogin(); break;
+    default: html = screenLanding(); break;
   }
 
   app.innerHTML = html;
@@ -1652,6 +1765,7 @@ function bindGlobalActions() {
 }
 
 function bindRouteActions(route) {
+  if (route === "landing") bindLanding();
   if (route === "login") bindLogin();
   if (route === "register") bindRegister();
   if (route === "home") bindDashboard();
@@ -1699,7 +1813,7 @@ function bindLogin() {
 
       const errs = {};
       if (!e) errs.email = "Email is required.";
-      else if (!isValidEmail(e)) errs.email = "Enter a valid email format.";
+      else if (!isValidEmail(e)) errs.email = "Please enter a valid email address.";
       if (!p) errs.password = "Password is required.";
 
       if (Object.keys(errs).length) {
@@ -1734,6 +1848,17 @@ function bindLogin() {
   }
 }
 
+function bindLanding() {
+  const start = document.getElementById("btnStartLearning");
+  if (start) {
+    start.addEventListener("click", () => {
+      setRoute("login");
+    });
+  }
+  const login = document.getElementById("btnLandingLogin");
+  if (login) login.addEventListener("click", () => setRoute("login"));
+}
+
 function bindRegister() {
   const goLogin = document.getElementById("goLogin");
   if (goLogin) goLogin.addEventListener("click", () => setRoute("login"));
@@ -1763,7 +1888,8 @@ function bindRegister() {
       else if (p.length < 4) errs.password = "Password must be at least 4 characters.";
 
       const exists = state.auth.accounts.some(a => a.email.toLowerCase() === e.toLowerCase());
-      if (!errs.email && exists) errs.email = "Email already registered.";
+      const isKnownDuplicate = e.toLowerCase() === "existing@test.com";
+      if (!errs.email && (exists || isKnownDuplicate)) errs.email = "Email already registered.";
 
       if (Object.keys(errs).length) {
         state.ui.auth.registerErrors = errs;
@@ -1860,9 +1986,7 @@ function bindTemplates() {
   document.querySelectorAll("[data-view-template]").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-view-template");
-      state.user.selectedScenarioId = id;
-      saveState();
-      setRoute("overview", { from: "templates" });
+      setRoute("overview", { from: "templates", templateId: id });
     });
   });
 }
@@ -2028,14 +2152,14 @@ function bindChat() {
     chatState.messages.push({ from, text, ts: nowIso() });
   }
 
-  function scriptedReply(userText) {
-    const scripts = DATA.chatScripts[stakeholderId] || [];
-    const t = userText.toLowerCase();
-    for (const s of scripts) {
-      if (!s.match || s.match.length === 0) continue;
-      if (s.match.some(k => t.includes(k))) return s.reply;
+  function scriptedReply() {
+    if (stakeholderId === "customer") {
+      return "I want to return items quickly without printing a label.";
     }
-    // default reply is last entry with empty match or fallback
+    if (stakeholderId === "warehouse") {
+      return "I need to know if the item is damaged before approving.";
+    }
+    const scripts = DATA.chatScripts[stakeholderId] || [];
     const fallback = scripts.find(s => !s.match || s.match.length === 0);
     return fallback ? fallback.reply : "Thanks—could you clarify what you need?";
   }
@@ -2050,9 +2174,10 @@ function bindChat() {
 
       pushMessage("user", text);
 
-      // “AI response” (scripted)
-      const reply = scriptedReply(text);
-      pushMessage("ai", reply);
+      // Simulated typing delay
+      const chatState = state.chats[scen.id][stakeholderId];
+      const typingIdx = chatState.messages.length;
+      pushMessage("ai", "Typing...");
 
       // activity tracking
       const act = state.activity[scen.id] || (state.activity[scen.id] = { backlogTouchedIds: [], chatCount: 0 });
@@ -2060,6 +2185,13 @@ function bindChat() {
 
       saveState();
       render();
+
+      setTimeout(() => {
+        if (!state.chats[scen.id]?.[stakeholderId]?.messages?.[typingIdx]) return;
+        state.chats[scen.id][stakeholderId].messages[typingIdx].text = scriptedReply();
+        saveState();
+        render();
+      }, 1000);
     });
   }
 }
@@ -2096,9 +2228,19 @@ function bindBacklog() {
     });
   }
 
+  const back = document.getElementById("btnBackToHub");
+  if (back) {
+    back.addEventListener("click", () => setRoute("hub"));
+  }
+
+  const backWs = document.getElementById("btnBackToWorkspace");
+  if (backWs) {
+    backWs.addEventListener("click", () => setRoute("workspace"));
+  }
+
   document.querySelectorAll("[data-open-item]").forEach(row => {
     row.addEventListener("click", () => {
-      const id = Number(row.getAttribute("data-open-item"));
+      const id = row.getAttribute("data-open-item");
       setRoute("backlog_detail", { itemId: id });
     });
   });
@@ -2109,7 +2251,7 @@ function bindBacklogDetail() {
   if (!scen) return;
 
   const items = DATA.backlog[scen.id] || [];
-  const itemId = Number(state.nav.params.itemId);
+  const itemId = state.nav.params.itemId;
   const idx = items.findIndex(i => i.id === itemId);
 
   const prev = document.getElementById("btnPrevItem");
@@ -2121,24 +2263,19 @@ function bindBacklogDetail() {
   if (next && idx < items.length - 1) {
     next.addEventListener("click", () => setRoute("backlog_detail", { itemId: items[idx + 1].id }));
   }
+
+  const back = document.getElementById("btnBackToBacklog");
+  if (back) back.addEventListener("click", () => setRoute("backlog"));
 }
 
 function bindOutcomeStudent() {
   const scen = getSelectedScenario();
   if (!scen) return;
 
-  const input = document.getElementById("reflectionInput");
-  const saveBtn = document.getElementById("btnSaveReflection");
+  const backBtn = document.getElementById("btnBackToHub");
   const exitBtn = document.getElementById("btnExitToDashboard");
 
-  if (saveBtn) {
-    saveBtn.addEventListener("click", () => {
-      const text = (input?.value || "");
-      state.reflections[scen.id] = text;
-      saveState();
-      render();
-    });
-  }
+  if (backBtn) backBtn.addEventListener("click", () => setRoute("hub"));
 
   if (exitBtn) {
     exitBtn.addEventListener("click", () => {
@@ -2188,7 +2325,7 @@ header = function (opts = {}) {
   if (state.auth.isLoggedIn) {
     if (!state.nav.route || state.nav.route === "login") state.nav.route = "home";
   } else {
-    state.nav.route = "login";
+    state.nav.route = "landing";
   }
   saveState();
   render();

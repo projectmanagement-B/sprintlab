@@ -9,14 +9,14 @@ This project is a **UI-only MVP (Minimum Viable Product)** built with vanilla we
 ## 📱 Features
 
 - **Mobile-First Design:** Styled specifically within an iPhone 13 frame (`390x844`) to simulate a mobile app experience.
+- **New Landing Page:** A welcoming entry point outlining the tool's value proposition before login.
+- **Scenario Templates:** A browser interface to view and select different project scenarios (e.g., Intro, Advanced).
 - **Role-Based Access:**
   - **Student View:** Join scenarios, select roles (PO, BA, Dev, Tester), and complete role-specific tasks.
   - **Professor View:** Create active scenarios, assign roles to students, and view class-level aggregated outcomes.
-- **Scenario Hub:** A central dashboard to navigate requirements, team management, and tasks.
-- **Simulated Stakeholder Chat:** An interactive chat interface where users talk to "AI" stakeholders (Customer, Warehouse Operator, Manager) to gather requirements.  
-  *Note: Responses are scripted/regex-based for this MVP.*
-- **Backlog Management:** A fully functional backlog UI with filtering (Priority, Status, Role) and detailed user story views.
-- **Role Workspaces:** Specific checklists and tasks tailored to the user's selected role (e.g., "Draft test cases" for Testers).
+- **Simulated Stakeholder Chat:** An interactive chat interface where users talk to "AI" stakeholders (Customer, Warehouse Operator, Manager) to gather requirements.
+- **Backlog Management:** A fully functional backlog UI with filtering (Priority, Status, Role) and detailed user story views (supporting new `US-XX` ID formats).
+- **Role Workspaces:** Specific checklists and tasks tailored to the user's selected role.
 - **Local State Management:** Accounts, progress, chat history, and role assignments are persisted in the browser's `localStorage`.
 
 ---
@@ -43,7 +43,7 @@ Since this is a static web application, you do not need to install Node.js or ru
 1. **Create the files:** Create a folder and add `index.html`, `styles.css`, and `app.js`.
 2. **Paste the code:** Copy the respective code into each file.
 3. **Open the app:** Double-click `index.html` to open it in your browser.
-4. **Recommended:** For the best experience, use a local server (like the "Live Server" extension in VS Code) to prevent strict browser security warnings, though the app is designed to work directly from the file system.
+4. **Recommended:** For the best experience, use a local server (like the "Live Server" extension in VS Code) to prevent strict browser security warnings.
 
 ---
 
@@ -53,8 +53,8 @@ The application comes pre-loaded with simulated accounts. You can also register 
 
 | Role              | Email                | Password |
 |-------------------|----------------------|----------|
-| **Student**       | demo@sprintlab.edu   | demo123 |
-| **Professor**     | prof@sprintlab.edu   | prof123 |
+| **Student** | demo@sprintlab.edu   | demo123 |
+| **Professor** | prof@sprintlab.edu   | prof123 |
 | **Student (Alt)** | emma@uni.edu         | emma123 |
 
 ---
@@ -63,14 +63,14 @@ The application comes pre-loaded with simulated accounts. You can also register 
 
 ### 1. The Workflow
 
-1. **Login:** Use the demo credentials above.
-2. **Dashboard:** Click **Open** on **Scenario 01 – Returns Management App**.
+1. **Landing & Login:** Click **Start Learning** on the landing page and use the demo credentials above.
+2. **Templates & Dashboard:** Browse templates or click **Open** on the active **Scenario 01**.
 3. **Role Selection:**
    - Go to **Role Distribution**.
    - Click on an **Available** role (e.g., Business Analyst) to assign it to yourself.
 4. **Hub Navigation:** Use the Hub to access different tools:
-   - **Stakeholders:** Chat with personas to uncover requirements. Try asking about *refunds*, *shipping labels*, or *tracking*.
-   - **Backlog:** Filter and review the user stories created for the scenario.
+   - **Stakeholders:** Chat with personas to uncover requirements.
+   - **Backlog:** Filter and review the 8 core user stories (including new photo upload & barcode scanning tasks).
    - **My Workspace:** Check off tasks specific to your role.
 5. **Outcome:** Submit a reflection on your learning experience.
 
@@ -87,9 +87,8 @@ The application comes pre-loaded with simulated accounts. You can also register 
 ```text
 /
 ├── index.html      # Entry point, loads CSS/JS and contains the root #app div
-├── styles.css      # All styling (Reset, iPhone frame, Components, Utility classes)
-└── app.js          # Logic (State management, Routing, Data, Event Handling, HTML Rendering)
-```
+├── styles.css      # All styling (Reset, iPhone frame, Landing Page, Components)
+└── app.js          # Logic (State management, Routing, Data, Event Handling)
 
 ---
 
