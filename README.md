@@ -90,6 +90,8 @@ The application comes pre-loaded with simulated accounts. You can also register 
 ├── styles.css      # All styling (Reset, iPhone frame, Landing Page, Components)
 └── app.js          # Logic (State management, Routing, Data, Event Handling)
 
+``
+
 ---
 
 ## ⚠️ Limitations (MVP)
@@ -104,3 +106,4 @@ The application comes pre-loaded with simulated accounts. You can also register 
 ## 📄 License
 
 This project is open-source and intended for educational purposes.
+
