@@ -466,7 +466,16 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
     state.user.selectedScenarioId &&
     !isProfessor() &&
     role !== "Student"
-      ? `<button class="btn btn-danger" id="btnRenounce" style="padding:8px 10px;border-radius:10px;font-size:12px;">Renounce</button>`
+      ? `
+        <button
+          class="btn btn-ghost renounce-btn"
+          id="btnRenounce"
+          title="Renounce role"
+          aria-label="Renounce role"
+        >
+          ${icon("x")}
+        </button>
+      `
       : "";
 
   const backBtn = showBack
