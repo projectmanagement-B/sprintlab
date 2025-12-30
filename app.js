@@ -476,6 +476,10 @@ function defaultState() {
         registerErrors: {},
         registerForm: { name: "", email: "", password: "" },
         loginForm: { email: "", password: "" }
+      },
+      createScenario: {
+        form: { name: "", cohort: "", startDate: "", endDate: "", notes: "", isActive: true },
+        errors: {}
       }
     },
     // Active scenario instance flags (UI-only)
@@ -766,13 +770,18 @@ function screenDashboard() {
   const query = (ui.search || "").trim().toLowerCase();
 
   let list = DATA.scenarios.map(s => {
-    const userRoleTag = s.id === "scenario01" && s.active
-      ? (state.user.selectedScenarioId === "scenario01" ? currentRoleLabel() : "Unassigned")
+    const activeConfig = state.activeScenario[s.id];
+    const isActive = activeConfig ? !!activeConfig.isActive : !!s.active;
+    const status = activeConfig ? (isActive ? "In progress" : "Not active") : s.status;
+    const userRoleTag = isActive
+      ? (state.user.selectedScenarioId === s.id ? currentRoleLabel() : "Unassigned")
       : "Unassigned";
 
     return {
       ...s,
-      userRoleTag
+      userRoleTag,
+      active: isActive,
+      status
     };
   });
 
@@ -816,7 +825,7 @@ function screenDashboard() {
         <div style="margin-top:12px;">
           <div class="small" style="margin-bottom:6px;">Scenario status</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            ${["All", "In progress", "Coming soon"].map(st => `
+            ${["All", "In progress", "Not active", "Coming soon"].map(st => `
               <button class="btn ${ui.filterStatus === st ? "btn-primary" : "btn-secondary"}"
                       data-filter-status="${escapeHtml(st)}"
                       style="padding:8px 10px;border-radius:999px;font-size:12px;">
@@ -864,6 +873,12 @@ function screenDashboard() {
         ${list.map(s => scenarioCard(s)).join("")}
       </div>
 
+      ${isProfessor() ? `
+        <button class="btn btn-secondary btn-full" id="btnCreateScenario" style="margin-top:14px;">
+          Create new scenario
+        </button>
+      ` : ""}
+
       <div class="safe-area"></div>
     </div>
   `;
@@ -876,6 +891,8 @@ function scenarioCard(s) {
   const statusBadge =
     s.status === "In progress"
       ? badge("In progress", "warning")
+      : s.status === "Not active"
+      ? badge("Not active", "gray")
       : badge("Coming soon", "gray");
 
   const openBtn = disabled
@@ -976,6 +993,7 @@ function screenScenarioOverview() {
 
   const subtitle = scen.title;
   const backRoute = state.nav.params.from === "templates" ? "templates" : "home";
+  const isActiveInstance = !!state.activeScenario[scen.id]?.isActive;
 
   const personaCards = (scen.personas || []).map(p => `
     <div class="card" style="padding:12px;">
@@ -986,10 +1004,12 @@ function screenScenarioOverview() {
   `).join("");
 
   const createBtn = isProfessor() && scen.active
-    ? `<button class="btn btn-primary" id="btnCreateActive" style="margin-top:12px;">Create active scenario</button>`
+    ? `<button class="btn btn-primary" id="btnCreateActive" style="margin-top:12px;">
+         ${isActiveInstance ? "Edit active scenario" : "Create active scenario"}
+       </button>`
     : "";
 
-  const continueBtn = scen.active
+  const continueBtn = scen.active && isActiveInstance
     ? `<button class="btn btn-primary" id="btnContinueRoles">Continue to role selection</button>`
     : "";
 
@@ -1034,8 +1054,79 @@ function screenScenarioOverview() {
           Back to scenarios
         </button>
         ${continueBtn}
-        ${createBtn}
       </div>
+
+      ${createBtn}
+
+      <div class="safe-area"></div>
+    </div>
+  `;
+}
+
+function screenCreateScenario() {
+  if (!requireAuthOrRedirect()) return "";
+  if (!isProfessor()) return screenScenarioOverview();
+
+  const scen = getSelectedScenario();
+  if (!scen) return screenDashboard();
+
+  const subtitle = `${scen.title}`;
+  const form = state.ui.createScenario.form || {};
+  const errs = state.ui.createScenario.errors || {};
+  const existing = state.activeScenario[scen.id] || {};
+  const isActive = typeof form.isActive === "boolean" ? form.isActive : !!existing.isActive;
+
+  return `
+    ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "overview" })}
+    <div class="screen">
+      <h1 style="margin-bottom:6px;">Create class exercise</h1>
+      <p style="margin-bottom:14px;">Set up an active scenario before assigning roles.</p>
+
+      <div class="input-group">
+        <label>Exercise name</label>
+        <input id="csName" type="text" placeholder="Scenario 01 – Returns Management App"
+               value="${escapeHtml(form.name || existing.name || scen.title)}" />
+        ${errs.name ? `<div class="input-error">${escapeHtml(errs.name)}</div>` : ""}
+      </div>
+
+      <div class="input-group">
+        <label>Cohort / class</label>
+        <input id="csCohort" type="text" placeholder="PM Bootcamp – Group A"
+               value="${escapeHtml(form.cohort || existing.cohort || "")}" />
+      </div>
+
+      <div class="input-group">
+        <label>Start date</label>
+        <input id="csStart" type="date" value="${escapeHtml(form.startDate || existing.startDate || "")}" />
+        ${errs.startDate ? `<div class="input-error">${escapeHtml(errs.startDate)}</div>` : ""}
+      </div>
+
+      <div class="input-group">
+        <label>End date (optional)</label>
+        <input id="csEnd" type="date" value="${escapeHtml(form.endDate || existing.endDate || "")}" />
+      </div>
+
+      <div class="input-group">
+        <label>Notes (optional)</label>
+        <textarea id="csNotes" rows="3" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="Instructions for students...">${escapeHtml(form.notes || existing.notes || "")}</textarea>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:12px;">
+        <div style="font-weight:600;margin-bottom:8px;">Availability</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn ${isActive ? "btn-primary" : "btn-secondary"}" id="btnSetActive" type="button"
+                  style="padding:8px 12px;border-radius:999px;font-size:12px;">
+            Active for students
+          </button>
+          <button class="btn ${!isActive ? "btn-primary" : "btn-secondary"}" id="btnSetInactive" type="button"
+                  style="padding:8px 12px;border-radius:999px;font-size:12px;">
+            Not active
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="btnSaveScenario">Save and assign roles</button>
 
       <div class="safe-area"></div>
     </div>
@@ -1616,15 +1707,15 @@ function screenOutcomeStudent() {
         <div class="progress-steps progress-3">
           <div class="${stepClass}">
             <div class="step-circle">1</div>
-            <div class="step-label">Clarify Requirements</div>
+            <div class="step-label">Requirements</div>
           </div>
           <div class="${stepClass}">
             <div class="step-circle">2</div>
-            <div class="step-label">Refine Backlog</div>
+            <div class="step-label">Backlog</div>
           </div>
           <div class="${stepClass}">
             <div class="step-circle">3</div>
-            <div class="step-label">Plan Tests</div>
+            <div class="step-label">Testing</div>
           </div>
         </div>
       </div>
@@ -1738,6 +1829,7 @@ function render() {
     case "home": html = screenDashboard(); break;
     case "templates": html = screenTemplates(); break;
     case "overview": html = screenScenarioOverview(); break;
+    case "create_scenario": html = screenCreateScenario(); break;
     case "roles": html = screenRoleDistribution(); break;
     case "hub": html = screenHub(); break;
     case "workspace": html = screenWorkspace(); break;
@@ -1847,6 +1939,7 @@ function bindRouteActions(route) {
   if (route === "home") bindDashboard();
   if (route === "templates") bindTemplates();
   if (route === "overview") bindOverview();
+  if (route === "create_scenario") bindCreateScenario();
   if (route === "roles") bindRoles();
   if (route === "hub") bindHub();
   if (route === "workspace") bindWorkspace();
@@ -2004,6 +2097,15 @@ function bindDashboard() {
     templates.addEventListener("click", () => setRoute("templates"));
   }
 
+  const createScenario = document.getElementById("btnCreateScenario");
+  if (createScenario) {
+    createScenario.addEventListener("click", () => {
+      state.user.selectedScenarioId = "scenario01";
+      saveState();
+      setRoute("create_scenario");
+    });
+  }
+
   const search = document.getElementById("scenarioSearch");
   if (search) {
     search.addEventListener("input", (e) => {
@@ -2087,7 +2189,68 @@ function bindOverview() {
     btn.addEventListener("click", () => {
       const scen = getSelectedScenario();
       if (!scen) return;
-      state.activeScenario[scen.id] = { isActive: true };
+      setRoute("create_scenario");
+    });
+  }
+}
+
+function bindCreateScenario() {
+  const scen = getSelectedScenario();
+  if (!scen) return;
+
+  const name = document.getElementById("csName");
+  const cohort = document.getElementById("csCohort");
+  const start = document.getElementById("csStart");
+  const end = document.getElementById("csEnd");
+  const notes = document.getElementById("csNotes");
+  const activeBtn = document.getElementById("btnSetActive");
+  const inactiveBtn = document.getElementById("btnSetInactive");
+  const saveBtn = document.getElementById("btnSaveScenario");
+
+  if (name) name.addEventListener("input", (e) => { state.ui.createScenario.form.name = e.target.value; saveState(); });
+  if (cohort) cohort.addEventListener("input", (e) => { state.ui.createScenario.form.cohort = e.target.value; saveState(); });
+  if (start) start.addEventListener("input", (e) => { state.ui.createScenario.form.startDate = e.target.value; saveState(); });
+  if (end) end.addEventListener("input", (e) => { state.ui.createScenario.form.endDate = e.target.value; saveState(); });
+  if (notes) notes.addEventListener("input", (e) => { state.ui.createScenario.form.notes = e.target.value; saveState(); });
+  if (activeBtn) {
+    activeBtn.addEventListener("click", () => {
+      state.ui.createScenario.form.isActive = true;
+      saveState();
+      render();
+    });
+  }
+  if (inactiveBtn) {
+    inactiveBtn.addEventListener("click", () => {
+      state.ui.createScenario.form.isActive = false;
+      saveState();
+      render();
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      const f = state.ui.createScenario.form || {};
+      const errs = {};
+      if (!String(f.name || "").trim()) errs.name = "Exercise name is required.";
+      if (!String(f.startDate || "").trim()) errs.startDate = "Start date is required.";
+
+      if (Object.keys(errs).length) {
+        state.ui.createScenario.errors = errs;
+        saveState();
+        render();
+        return;
+      }
+
+      state.activeScenario[scen.id] = {
+        isActive: f.isActive !== false,
+        name: f.name.trim(),
+        cohort: (f.cohort || "").trim(),
+        startDate: f.startDate,
+        endDate: f.endDate || "",
+        notes: (f.notes || "").trim(),
+        createdAt: nowIso()
+      };
+      state.ui.createScenario.errors = {};
       saveState();
       setRoute("roles");
     });
