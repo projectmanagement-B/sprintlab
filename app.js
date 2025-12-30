@@ -455,7 +455,7 @@ function defaultState() {
 let state = loadState() || defaultState();
 
 /* -----------------------------
-   3) Header Builder
+   3) Header Builder 
 -------------------------------- */
 function header({ title = "SprintLab", subtitle = "", showBack = false, backRoute = null, backParams = {} } = {}) {
   const role = currentRoleLabel();
