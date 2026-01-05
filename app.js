@@ -616,124 +616,42 @@ const DATA = {
   // Scripted replies (role-aware enough for MVP)
   chatScripts: {
     alex: {
-      PO: [
-        {
-          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
-          topic: "greeting",
-          reply: "Hi. Keep it short - what value does this give learners?"
-        },
-        {
-          match: ["value", "benefit", "impact", "help"],
-          topic: "value",
-          reply: "I need a clear value statement. How does this help the user?"
-        },
-        {
-          match: ["problem", "solve", "pain", "need"],
-          topic: "problem",
-          reply: "What exact problem are we solving with persona chat?"
-        },
-        {
-          match: ["align", "sprint", "goal", "priority", "prioritize", "why now"],
-          topic: "alignment",
-          reply: "Sprint 3 is about interaction. If this is not prioritized now, it stays a static demo."
-        },
-        {
-          match: ["mvp", "minimal", "overengineering", "scope"],
-          topic: "mvp",
-          reply: "MVP is scripted responses only. No AI logic, no backend."
-        },
-        {
-          match: ["trade", "tradeoff", "cut", "faster", "speed"],
-          topic: "tradeoff",
-          reply: "What are we trading off to ship fast?"
-        },
-        {
-          match: ["outcome", "learn", "learning", "achieve"],
-          topic: "outcome",
-          reply: "What should the learner walk away with after this chat?"
-        },
-        {
-          match: [],
-          reply: "Stay focused on value, scope, and delivery confidence."
-        }
-      ],
-      Dev: [
-        {
-          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
-          topic: "greeting",
-          reply: "Are the requirements clear enough for you?"
-        },
-        {
-          match: ["break", "smaller", "pieces", "phases"],
-          topic: "breakdown",
-          reply: "Yes. Start with scripted responses only and keep it small."
-        },
-        {
-          match: ["constraints", "technical", "backend", "architecture"],
-          topic: "constraints",
-          reply: "No backend dependencies right now. Fast and stable is the goal."
-        },
-        {
-          match: ["mvp", "simple", "static"],
-          topic: "mvp",
-          reply: "Static scripts per persona are enough for MVP."
-        },
-        {
-          match: ["assumption", "assume"],
-          topic: "assumptions",
-          reply: "We assume learners will engage meaningfully even with limited responses."
-        },
-        {
-          match: ["fail", "risk", "what if"],
-          topic: "risk",
-          reply: "If it fails, we learn and improve later. This is not production AI."
-        },
-        {
-          match: ["dependency", "dependencies", "depends"],
-          topic: "dependencies",
-          reply: "Only dependency is finalized persona content from BA."
-        },
-        {
-          match: [],
-          reply: "Keep it simple, stable, and easy to ship."
-        }
-      ],
-      Tester: [
-        {
-          match: ["acceptance", "criteria", "behavior", "should"],
-          topic: "criteria",
-          reply: "Chat should load, show scripted responses, and not break the flow."
-        },
-        {
-          match: ["edge", "case", "empty", "repeat", "fast"],
-          topic: "edge",
-          reply: "Yes, check empty messages, repeated inputs, and fast clicks."
-        },
-        {
-          match: ["test", "testing", "how will"],
-          topic: "testing",
-          reply: "Manual clickthrough testing for each role and persona is fine for MVP."
-        },
-        {
-          match: ["error", "invalid", "input"],
-          topic: "error",
-          reply: "If input is invalid, show a neutral prompt and do not crash."
-        },
-        {
-          match: ["consistent", "across", "screens"],
-          topic: "consistency",
-          reply: "Behavior should be consistent across roles and screens."
-        },
-        {
-          match: ["coverage", "scenarios"],
-          topic: "coverage",
-          reply: "Yes, basic scenarios per persona and role are enough for now."
-        },
-        {
-          match: [],
-          reply: "Focus on stability, clarity, and graceful handling."
-        }
-      ]
+      PO: {
+        sequence: [
+          "Sure. I just want to understand how this actually helps the user. What value does this deliver?",
+          "Okay, but what problem are we really solving here?",
+          "How does this align with your sprint goal?",
+          "What is the MVP version of this? I do not want overengineering.",
+          "What trade-offs are you making?",
+          "Why should this be prioritized now?",
+          "Fair enough. What outcome should the learner achieve?"
+        ],
+        fallback: "Keep it focused on value, scope, and outcomes."
+      },
+      Dev: {
+        sequence: [
+          "Sure. Are the requirements clear enough for you?",
+          "Yes. Start with simple scripted responses. No automation yet.",
+          "We need this fast and stable. No backend dependencies for now.",
+          "Absolutely. Static scripts per persona are enough.",
+          "That learners will engage meaningfully even with limited responses.",
+          "Then we learn and improve it later. This is not production AI.",
+          "Only on finalized persona content from BA."
+        ],
+        fallback: "Keep it simple, stable, and shippable."
+      },
+      Tester: {
+        sequence: [
+          "Sure. What are the acceptance criteria for this?",
+          "Have you considered edge cases?",
+          "How will this be tested?",
+          "Are error states defined?",
+          "Is behavior consistent across screens?",
+          "What is expected for invalid input?",
+          "Do you have test coverage for this flow?"
+        ],
+        fallback: "Focus on stability, edge cases, and clear criteria."
+      }
     },
     customer: [
       {
@@ -3286,18 +3204,43 @@ function bindChat() {
     const scriptsEntry = DATA.chatScripts[stakeholderId];
     let scripts = [];
     let roleScoped = false;
+    let sequence = null;
+    let sequenceFallback = null;
+    let roleKey = null;
     if (Array.isArray(scriptsEntry)) {
       scripts = scriptsEntry;
     } else if (scriptsEntry && typeof scriptsEntry === "object") {
       const role = currentRoleLabel();
-      const roleKey = role === "BA" || role === "Professor" || role === "Student" ? "PO" : role;
-      scripts =
+      roleKey =
+        role === "BA" || role === "Professor" || role === "Student"
+          ? "PO"
+          : (role === "QA" ? "Tester" : role);
+      const roleScripts =
         scriptsEntry[roleKey] ||
         (roleKey === "Tester" && scriptsEntry.QA) ||
         scriptsEntry.PO ||
         scriptsEntry.default ||
         [];
+      if (Array.isArray(roleScripts)) {
+        scripts = roleScripts;
+      } else if (roleScripts && typeof roleScripts === "object") {
+        if (Array.isArray(roleScripts.sequence)) sequence = roleScripts.sequence;
+        if (roleScripts.fallback) sequenceFallback = roleScripts.fallback;
+        if (Array.isArray(roleScripts.scripts)) scripts = roleScripts.scripts;
+      }
       roleScoped = true;
+    }
+    if (sequence && sequence.length) {
+      const chatState = state.chats?.[scen.id]?.[stakeholderId];
+      if (!chatState) return sequenceFallback || sequence[sequence.length - 1];
+      if (!chatState.context) chatState.context = {};
+      const seqKey = `sequence_${roleKey || "default"}`;
+      const idx = Number(chatState.context[seqKey] || 0);
+      if (idx < sequence.length) {
+        chatState.context[seqKey] = idx + 1;
+        return sequence[idx];
+      }
+      return sequenceFallback || sequence[sequence.length - 1];
     }
     const t = String(userText || "").toLowerCase();
     for (const s of scripts) {
