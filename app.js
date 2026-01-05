@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    SprintLab – MVP SPA (UI-only, static data, clickable flow)
    - Login + Register (with validation + duplicate email check)
    - Dashboard (search + working filter button)
@@ -1530,12 +1530,12 @@ function screenBacklog() {
         ${["All", "High", "Medium", "Low"].map(p => `<option ${ui.filterPriority===p?"selected":""}>${p} Priorities</option>`).join("")}
       </select>
       <select id="filterStatus" style="flex:1;padding:10px;border:1px solid #cbd5f5;border-radius:12px;">
-        ${["All", "To Do", "In Progress", "Done"].map(s => `<option ${ui.filterStatus===s?"selected":""}>${s === "All" ? "All Status" : s}</option>`).join("")}
+        ${["All", "To Do", "In Progress", "Done"].map(s => `<option value="${escapeHtml(s)}" ${ui.filterStatus===s?"selected":""}>${s === "All" ? "All Status" : s}</option>`).join("")}
       </select>
     </div>
     <div style="display:flex;gap:12px;margin-bottom:10px;">
       <select id="filterRole" style="flex:1;padding:10px;border:1px solid #cbd5f5;border-radius:12px;">
-        ${["All", "PO", "BA", "Dev", "Tester"].map(r => `<option ${ui.filterRole===r?"selected":""}>${r === "All" ? "All Roles" : r}</option>`).join("")}
+        ${["All", "PO", "BA", "Dev", "Tester"].map(r => `<option value="${escapeHtml(r)}" ${ui.filterRole===r?"selected":""}>${r === "All" ? "All Roles" : r}</option>`).join("")}
       </select>
     </div>
   `;
