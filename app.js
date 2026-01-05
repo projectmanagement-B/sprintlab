@@ -2162,7 +2162,7 @@ function screenOutcomeProfessor() {
   });
 
   const rows = filtered.map(g => `
-    <tr>
+    <tr data-group-row="${escapeHtml(g.name)}" style="cursor:pointer;">
       <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(g.name)}</td>
       <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(g.role)}</td>
       <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(g.status)}</td>
@@ -2198,8 +2198,8 @@ function screenOutcomeProfessor() {
       </div>
 
       <h2 style="margin:18px 0 10px;">Teams / students</h2>
-      <div class="card" style="padding:0;overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <div class="card no-hover" style="padding:0;overflow:hidden;">
+        <table class="table-hover" style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead style="background:#f8fafc;">
             <tr>
               <th style="text-align:left;padding:10px;border-bottom:1px solid #e5e7eb;">Team</th>
@@ -2218,6 +2218,53 @@ function screenOutcomeProfessor() {
       </div>
 
       <button class="btn btn-secondary btn-full" id="btnExitToDashboard" style="margin-top:12px;">Exit to Home</button>
+
+      <div class="safe-area"></div>
+    </div>
+  `;
+}
+
+function screenReadOnlyWorkspace() {
+  if (!requireAuthOrRedirect()) return "";
+  if (!isProfessor()) return screenDashboard();
+  const scen = getSelectedScenario();
+  if (!scen) return screenDashboard();
+
+  const groupName = state.nav.params.groupName;
+  const group = (state.classView[scen.id]?.groups || []).find(g => g.name === groupName);
+  if (!group) return screenOutcomeProfessor();
+
+  const subtitle = `${scen.title} • ${group.name}`;
+
+  return `
+    ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "prof_outcome" })}
+    <div class="screen">
+      <h1 style="margin-bottom:6px;">Read-Only Workspace</h1>
+      <p style="margin-bottom:14px;">Quick summary of student activity for ${escapeHtml(group.name)}</p>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          ${badge(`Role: ${group.role}`, "info")}
+          ${badge(`Status: ${group.status}`, group.status === "Completed" ? "success" : "gray")}
+          ${badge(`Chats: ${group.chats}`, "gray")}
+          ${badge(`Backlog touched: ${group.backlogTouched}`, "gray")}
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:8px;">Notes</div>
+        <p class="small">Notes are available in the full workspace view (UI-only in this MVP).</p>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:8px;">Backlog Activity</div>
+        <p class="small">This summary shows how many items were touched.</p>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:8px;">Chat Activity</div>
+        <p class="small">This summary shows total chats with stakeholders.</p>
+      </div>
 
       <div class="safe-area"></div>
     </div>
@@ -2250,6 +2297,7 @@ function render() {
     case "backlog_detail": html = screenBacklogDetail(); break;
     case "outcome": html = screenOutcomeStudent(); break;
     case "prof_outcome": html = screenOutcomeProfessor(); break;
+    case "prof_readonly": html = screenReadOnlyWorkspace(); break;
     default: html = screenLanding(); break;
   }
 
@@ -2382,6 +2430,7 @@ function bindRouteActions(route) {
   if (route === "backlog_detail") bindBacklogDetail();
   if (route === "outcome") bindOutcomeStudent();
   if (route === "prof_outcome") bindOutcomeProfessor();
+  if (route === "prof_readonly") bindReadOnlyWorkspace();
 }
 
 /* -----------------------------
@@ -3217,7 +3266,17 @@ function bindOutcomeProfessor() {
       render();
     });
   }
+
+  document.querySelectorAll("[data-group-row]").forEach(row => {
+    row.addEventListener("click", () => {
+      const name = row.getAttribute("data-group-row");
+      if (!name) return;
+      setRoute("prof_readonly", { groupName: name });
+    });
+  });
 }
+
+function bindReadOnlyWorkspace() {}
 
 /* -----------------------------
    8) Header Back Routing Hook
