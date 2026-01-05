@@ -380,6 +380,27 @@ const DATA = {
       ],
       personas: [
         {
+          id: "alex",
+          name: "Alex",
+          subtitle: "Business stakeholder / customer",
+          bio: "Outcome-focused and slightly impatient; cares about value, priority, and delivery confidence.",
+          goals: [
+            "Maximize business value with minimal risk",
+            "Prioritize MVP trade-offs for fast delivery",
+            "Ensure the feature feels like a real learning simulation"
+          ],
+          painPoints: [
+            "Overengineering before validation",
+            "Unclear trade-offs or scope creep",
+            "Slow delivery with low confidence"
+          ],
+          needs: [
+            "Clear MVP scope and priorities",
+            "Simple, realistic scripted dialogue",
+            "Confidence the feature delivers learning value"
+          ]
+        },
+        {
           id: "customer",
           name: "Customer",
           subtitle: "End-user requesting returns.",
@@ -594,6 +615,126 @@ const DATA = {
 
   // Scripted replies (role-aware enough for MVP)
   chatScripts: {
+    alex: {
+      PO: [
+        {
+          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+          topic: "greeting",
+          reply: "Hi. Keep it short - what value does this give learners?"
+        },
+        {
+          match: ["value", "benefit", "impact", "help"],
+          topic: "value",
+          reply: "I need a clear value statement. How does this help the user?"
+        },
+        {
+          match: ["problem", "solve", "pain", "need"],
+          topic: "problem",
+          reply: "What exact problem are we solving with persona chat?"
+        },
+        {
+          match: ["align", "sprint", "goal", "priority", "prioritize", "why now"],
+          topic: "alignment",
+          reply: "Sprint 3 is about interaction. If this is not prioritized now, it stays a static demo."
+        },
+        {
+          match: ["mvp", "minimal", "overengineering", "scope"],
+          topic: "mvp",
+          reply: "MVP is scripted responses only. No AI logic, no backend."
+        },
+        {
+          match: ["trade", "tradeoff", "cut", "faster", "speed"],
+          topic: "tradeoff",
+          reply: "What are we trading off to ship fast?"
+        },
+        {
+          match: ["outcome", "learn", "learning", "achieve"],
+          topic: "outcome",
+          reply: "What should the learner walk away with after this chat?"
+        },
+        {
+          match: [],
+          reply: "Stay focused on value, scope, and delivery confidence."
+        }
+      ],
+      Dev: [
+        {
+          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+          topic: "greeting",
+          reply: "Are the requirements clear enough for you?"
+        },
+        {
+          match: ["break", "smaller", "pieces", "phases"],
+          topic: "breakdown",
+          reply: "Yes. Start with scripted responses only and keep it small."
+        },
+        {
+          match: ["constraints", "technical", "backend", "architecture"],
+          topic: "constraints",
+          reply: "No backend dependencies right now. Fast and stable is the goal."
+        },
+        {
+          match: ["mvp", "simple", "static"],
+          topic: "mvp",
+          reply: "Static scripts per persona are enough for MVP."
+        },
+        {
+          match: ["assumption", "assume"],
+          topic: "assumptions",
+          reply: "We assume learners will engage meaningfully even with limited responses."
+        },
+        {
+          match: ["fail", "risk", "what if"],
+          topic: "risk",
+          reply: "If it fails, we learn and improve later. This is not production AI."
+        },
+        {
+          match: ["dependency", "dependencies", "depends"],
+          topic: "dependencies",
+          reply: "Only dependency is finalized persona content from BA."
+        },
+        {
+          match: [],
+          reply: "Keep it simple, stable, and easy to ship."
+        }
+      ],
+      Tester: [
+        {
+          match: ["acceptance", "criteria", "behavior", "should"],
+          topic: "criteria",
+          reply: "Chat should load, show scripted responses, and not break the flow."
+        },
+        {
+          match: ["edge", "case", "empty", "repeat", "fast"],
+          topic: "edge",
+          reply: "Yes, check empty messages, repeated inputs, and fast clicks."
+        },
+        {
+          match: ["test", "testing", "how will"],
+          topic: "testing",
+          reply: "Manual clickthrough testing for each role and persona is fine for MVP."
+        },
+        {
+          match: ["error", "invalid", "input"],
+          topic: "error",
+          reply: "If input is invalid, show a neutral prompt and do not crash."
+        },
+        {
+          match: ["consistent", "across", "screens"],
+          topic: "consistency",
+          reply: "Behavior should be consistent across roles and screens."
+        },
+        {
+          match: ["coverage", "scenarios"],
+          topic: "coverage",
+          reply: "Yes, basic scenarios per persona and role are enough for now."
+        },
+        {
+          match: [],
+          reply: "Focus on stability, clarity, and graceful handling."
+        }
+      ]
+    },
     customer: [
       {
         match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
@@ -836,6 +977,7 @@ function defaultState() {
     // Chat history per scenario + stakeholder
     chats: {
       scenario01: {
+        alex: { messages: [], unread: 0 },
         customer: { messages: [], unread: 2 },
         warehouse: { messages: [], unread: 0 },
         manager: { messages: [], unread: 0 }
@@ -1958,12 +2100,14 @@ function screenChat() {
   `).join("");
 
   const hints = {
+    alex: "Hint: Ask about value, MVP scope, and trade-offs.",
     customer: "Hint: Ask about return deadlines or label requirements.",
     warehouse: "Hint: Ask about inspection steps or damage criteria.",
     manager: "Hint: Ask about exceptions and success criteria."
   };
 
   const guides = {
+    alex: ["Value delivered", "MVP scope", "Trade-offs", "Learning outcome"],
     customer: ["Return deadline", "Shipping label", "Status tracking", "Upload photo"],
     warehouse: ["Receive & scan", "Inspection outcome", "Damage reasons", "Barcode lookup"],
     manager: ["MVP scope", "Refund policy", "Success metrics", "Risks"]
@@ -2190,7 +2334,8 @@ function screenOutcomeStudent() {
 
   const displayTitle = getScenarioDisplayTitle(scen);
   const subtitle = `${displayTitle} - ${currentRoleLabel()}`;
-  const stepClass = "step active";
+  const stepActive = "step active";
+  const stepInactive = "step";
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "hub" })}
@@ -2201,17 +2346,21 @@ function screenOutcomeStudent() {
       <h2 style="margin:12px 0 10px;">Step Timeline</h2>
       <div class="progress-card">
         <div class="progress-steps progress-3">
-          <div class="${stepClass}">
+          <div class="${stepActive}">
             <div class="step-circle">1</div>
             <div class="step-label">Requirements</div>
           </div>
-          <div class="${stepClass}">
+          <div class="${stepActive}">
             <div class="step-circle">2</div>
             <div class="step-label">Backlog</div>
           </div>
-          <div class="${stepClass}">
+          <div class="${stepActive}">
             <div class="step-circle">3</div>
             <div class="step-label">Testing</div>
+          </div>
+          <div class="${stepInactive} muted">
+            <div class="step-circle">4</div>
+            <div class="step-label">Outcome</div>
           </div>
         </div>
       </div>
@@ -3134,7 +3283,22 @@ function bindChat() {
   }
 
   function scriptedReply(userText) {
-    const scripts = DATA.chatScripts[stakeholderId] || [];
+    const scriptsEntry = DATA.chatScripts[stakeholderId];
+    let scripts = [];
+    let roleScoped = false;
+    if (Array.isArray(scriptsEntry)) {
+      scripts = scriptsEntry;
+    } else if (scriptsEntry && typeof scriptsEntry === "object") {
+      const role = currentRoleLabel();
+      const roleKey = role === "BA" || role === "Professor" || role === "Student" ? "PO" : role;
+      scripts =
+        scriptsEntry[roleKey] ||
+        (roleKey === "Tester" && scriptsEntry.QA) ||
+        scriptsEntry.PO ||
+        scriptsEntry.default ||
+        [];
+      roleScoped = true;
+    }
     const t = String(userText || "").toLowerCase();
     for (const s of scripts) {
       if (!s.match || s.match.length === 0) continue;
@@ -3143,14 +3307,18 @@ function bindChat() {
           state.chats[scen.id][stakeholderId].context = {};
         }
         if (s.topic) state.chats[scen.id][stakeholderId].context.lastTopic = s.topic;
-        return roleAwareReply(s.reply, s.topic);
+        return roleScoped ? s.reply : roleAwareReply(s.reply, s.topic);
       }
     }
     // default reply is last entry with empty match or fallback
     const fallback = scripts.find(s => !s.match || s.match.length === 0);
     const lastTopic = state.chats[scen.id][stakeholderId].context?.lastTopic;
-    if (lastTopic) return followUpReply(lastTopic);
-    return fallback ? fallback.reply : "Thanks—could you clarify what you need?";
+    if (lastTopic) {
+      const followUp = followUpReply(lastTopic);
+      return roleScoped ? followUp : roleAwareReply(followUp, lastTopic);
+    }
+    if (fallback) return roleScoped ? fallback.reply : roleAwareReply(fallback.reply, fallback.topic);
+    return "Thanks-could you clarify what you need?";
   }
 
   function roleAwareReply(baseReply, topic) {
@@ -3188,6 +3356,14 @@ function bindChat() {
 
   function followUpReply(topic) {
     const followUps = {
+      alex: {
+        value: "Be specific about the learner value, not just the feature.",
+        problem: "Name the user pain point this solves.",
+        alignment: "Tie it directly to Sprint 3's interaction goal.",
+        mvp: "Keep it scripted and simple for now.",
+        tradeoff: "Call out what we are not doing yet.",
+        outcome: "Focus on the learning outcome, not just the interface."
+      },
       customer: {
         eligibility: "Also, the app should show the exact last eligible return date.",
         label: "If I can't print, a QR code for drop-off would be ideal.",

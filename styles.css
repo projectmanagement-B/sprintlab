@@ -626,6 +626,19 @@ button {
   color: #ffffff;
 }
 
+.step.muted {
+  opacity: 0.7;
+}
+
+.step.muted .step-circle {
+  background: #e2e8f0;
+  color: #94a3b8;
+}
+
+.step.muted .step-label {
+  color: #cbd5f5;
+}
+
 .step-label {
   font-size: 11px;
   color: #94a3b8;
