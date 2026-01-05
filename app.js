@@ -738,6 +738,10 @@ function defaultState() {
       roleAssign: {
         assignErrors: {},
         selfAssignError: ""
+      },
+      outcomeFilters: {
+        role: "All",
+        status: "All"
       }
     },
     meta: {
@@ -2147,8 +2151,17 @@ function screenOutcomeProfessor() {
   if (!scen) return screenDashboard();
 
   const subtitle = `${scen.title} • Professor`;
+  const filters = state.ui.outcomeFilters || { role: "All", status: "All" };
+  const roles = ["All", "PO", "BA", "Dev", "Tester"];
+  const statuses = ["All", "Active", "Idle", "Completed", "In Progress"];
 
-  const rows = (state.classView[scen.id]?.groups || []).map(g => `
+  const filtered = (state.classView[scen.id]?.groups || []).filter(g => {
+    const roleOk = filters.role === "All" || g.role === filters.role;
+    const statusOk = filters.status === "All" || g.status === filters.status;
+    return roleOk && statusOk;
+  });
+
+  const rows = filtered.map(g => `
     <tr>
       <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(g.name)}</td>
       <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(g.role)}</td>
@@ -2172,6 +2185,18 @@ function screenOutcomeProfessor() {
         </div>
       </div>
 
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:8px;">Filters</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <select id="profFilterRole" style="flex:1;min-width:140px;padding:10px;border:1px solid #cbd5f5;border-radius:12px;">
+            ${roles.map(r => `<option value="${escapeHtml(r)}" ${filters.role === r ? "selected" : ""}>${escapeHtml(r)}</option>`).join("")}
+          </select>
+          <select id="profFilterStatus" style="flex:1;min-width:140px;padding:10px;border:1px solid #cbd5f5;border-radius:12px;">
+            ${statuses.map(s => `<option value="${escapeHtml(s)}" ${filters.status === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+
       <h2 style="margin:18px 0 10px;">Teams / students</h2>
       <div class="card" style="padding:0;overflow:hidden;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -2184,7 +2209,7 @@ function screenOutcomeProfessor() {
               <th style="text-align:left;padding:10px;border-bottom:1px solid #e5e7eb;">Backlog</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows || `<tr><td colspan="5" style="padding:12px;color:#94a3b8;">No teams match the selected filters.</td></tr>`}</tbody>
         </table>
       </div>
 
@@ -3172,6 +3197,24 @@ function bindOutcomeProfessor() {
       state.user.selectedScenarioId = null;
       saveState();
       setRoute("home");
+    });
+  }
+
+  const role = document.getElementById("profFilterRole");
+  if (role) {
+    role.addEventListener("change", () => {
+      state.ui.outcomeFilters.role = role.value;
+      saveState();
+      render();
+    });
+  }
+
+  const status = document.getElementById("profFilterStatus");
+  if (status) {
+    status.addEventListener("change", () => {
+      state.ui.outcomeFilters.status = status.value;
+      saveState();
+      render();
     });
   }
 }
