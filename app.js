@@ -53,12 +53,21 @@ function loadState() {
   }
 }
 
-function setRoute(route, params = {}) {
+function setRoute(route, params = {}, options = {}) {
+  const { skipHistory = false, replaceHistory = false } = options;
   state.nav.route = route;
   state.nav.params = params;
   if (state.ui) state.ui.profileMenuOpen = false;
   syncAssignedRole();
   saveState();
+  if (!skipHistory) {
+    const historyState = { route, params };
+    if (replaceHistory) {
+      window.history.replaceState(historyState, "");
+    } else {
+      window.history.pushState(historyState, "");
+    }
+  }
   render();
 }
 
@@ -3300,6 +3309,10 @@ header = function (opts = {}) {
 (function init() {
   applyAppScale();
   window.addEventListener("resize", applyAppScale);
+  window.addEventListener("popstate", (event) => {
+    if (!event.state || !event.state.route) return;
+    setRoute(event.state.route, event.state.params || {}, { skipHistory: true });
+  });
   if (RESET_STATE_ON_LOAD) {
     state = defaultState();
     saveState();
@@ -3312,6 +3325,7 @@ header = function (opts = {}) {
   }
   migrateScenarioNames();
   syncAssignedRole();
+  window.history.replaceState({ route: state.nav.route, params: state.nav.params || {} }, "");
   saveState();
   render();
 })();
