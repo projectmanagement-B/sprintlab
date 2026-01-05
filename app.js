@@ -1679,6 +1679,16 @@ function screenWorkspace() {
 
   const tasks = getWorkspaceTasks(role);
   const tasksHtml = tasks.map(t => taskRow(scen.id, role, t)).join("");
+  const notesValue = state.workspace?.[scen.id]?.[role]?.notes || "";
+
+  const notesCard = `
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:600;margin-bottom:8px;">My Notes</div>
+      <textarea id="workspaceNotes" rows="4"
+        style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:12px;resize:none;"
+        placeholder="Capture observations or decisions...">${escapeHtml(notesValue)}</textarea>
+    </div>
+  `;
 
   const quickLinks = `
     <div class="card" style="margin-top:12px;cursor:pointer;" data-go="stakeholders">
@@ -1710,6 +1720,8 @@ function screenWorkspace() {
       <div style="display:grid;gap:10px;">
         ${tasksHtml || `<div class="info-box">Pick a role in Role Distribution to unlock role tasks.</div>`}
       </div>
+
+      ${notesCard}
 
       ${quickLinks}
       <div class="safe-area"></div>
@@ -2890,6 +2902,19 @@ function bindWorkspace() {
       render();
     });
   });
+
+  const scen = getSelectedScenario();
+  if (!scen) return;
+  const role = currentRoleLabel();
+  const notes = document.getElementById("workspaceNotes");
+  if (notes) {
+    notes.addEventListener("input", (e) => {
+      if (!state.workspace[scen.id]) state.workspace[scen.id] = {};
+      if (!state.workspace[scen.id][role]) state.workspace[scen.id][role] = { tasksDone: {} };
+      state.workspace[scen.id][role].notes = e.target.value;
+      saveState();
+    });
+  }
 }
 
 function bindStakeholders() {
