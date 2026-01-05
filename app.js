@@ -57,13 +57,19 @@ function setRoute(route, params = {}) {
   state.nav.route = route;
   state.nav.params = params;
   if (state.ui) state.ui.profileMenuOpen = false;
+  syncAssignedRole();
   saveState();
   render();
 }
 
 function getSelectedScenario() {
   const id = state.user.selectedScenarioId;
-  return DATA.scenarios.find(s => s.id === id) || null;
+  const scen = getScenarioById(id);
+  if (!scen) return null;
+  ensureScenarioState(scen.id);
+  const displayTitle = getScenarioDisplayTitle(scen);
+  if (displayTitle === scen.title) return scen;
+  return { ...scen, title: displayTitle };
 }
 
 function requireAuthOrRedirect() {
@@ -81,6 +87,241 @@ function currentRoleLabel() {
 
 function isProfessor() {
   return state.user.type === "professor";
+}
+
+function normalizeKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getAssignedRoleForScenario(scenId) {
+  if (!scenId || isProfessor()) return null;
+  const roles = state.roles?.[scenId] || [];
+  const nameKey = normalizeKey(state.user.name);
+  const emailKey = normalizeKey(state.user.email);
+  const entry = roles.find(r => {
+    const personKey = normalizeKey(r.person);
+    if (!personKey) return false;
+    return personKey === nameKey || (emailKey && personKey === emailKey);
+  });
+  return entry ? entry.name : null;
+}
+
+function syncAssignedRole() {
+  const scenId = state.user.selectedScenarioId;
+  if (!scenId) return;
+  const assigned = getAssignedRoleForScenario(scenId);
+  if (assigned) state.user.role = assigned;
+}
+
+function getScenarioDisplayTitle(scen, options = {}) {
+  if (!scen) return "";
+  const { preferInstance = true } = options;
+  if (!preferInstance) return scen.title;
+  const instance = state.activeScenario?.[scen.id];
+  if (instance && instance.name) return instance.name;
+  return scen.title;
+}
+
+function applyScenarioOverrides(scen) {
+  if (!scen) return scen;
+  const instance = state.activeScenario?.[scen.id];
+  if (!instance) return scen;
+  const merged = { ...scen };
+  if (instance.name) merged.title = instance.name;
+  if (typeof instance.short === "string") merged.short = instance.short;
+  if (typeof instance.overview === "string") merged.overview = instance.overview;
+  if (Array.isArray(instance.goals)) merged.goals = instance.goals;
+  if (Array.isArray(instance.constraints)) merged.constraints = instance.constraints;
+  if (Array.isArray(instance.successCriteria)) merged.successCriteria = instance.successCriteria;
+  if (Array.isArray(instance.personas)) merged.personas = instance.personas;
+  return merged;
+}
+
+function getCustomScenarios() {
+  if (!Array.isArray(state.customScenarios)) state.customScenarios = [];
+  return state.customScenarios;
+}
+
+function getAllScenarios() {
+  return DATA.scenarios.concat(getCustomScenarios());
+}
+
+function getScenarioById(id) {
+  return getAllScenarios().find(s => s.id === id) || null;
+}
+
+function isCustomScenario(id) {
+  return getCustomScenarios().some(s => s.id === id);
+}
+
+function nextScenarioId() {
+  if (!state.meta) state.meta = {};
+  if (!Number.isFinite(state.meta.scenarioSeq)) state.meta.scenarioSeq = 1;
+  const id = `custom-${state.meta.scenarioSeq}`;
+  state.meta.scenarioSeq += 1;
+  return id;
+}
+
+function defaultRoles() {
+  return [
+    { name: "PO", label: "Product Owner", status: "available", person: null },
+    { name: "BA", label: "Business Analyst", status: "available", person: null },
+    { name: "Dev", label: "Developer", status: "available", person: null },
+    { name: "Tester", label: "Tester", status: "available", person: null }
+  ];
+}
+
+function ensureScenarioState(scenId) {
+  if (!scenId) return;
+  if (!state.roles) state.roles = {};
+  if (!state.workspace) state.workspace = {};
+  if (!state.chats) state.chats = {};
+  if (!state.backlogUI) state.backlogUI = {};
+  if (!state.activity) state.activity = {};
+  if (!state.reflections) state.reflections = {};
+  if (!state.classView) state.classView = {};
+
+  if (!state.roles[scenId]) state.roles[scenId] = defaultRoles();
+  if (!state.workspace[scenId]) state.workspace[scenId] = {};
+  if (!state.chats[scenId]) {
+    state.chats[scenId] = {
+      customer: { messages: [], unread: 0 },
+      warehouse: { messages: [], unread: 0 },
+      manager: { messages: [], unread: 0 }
+    };
+  }
+  if (!state.backlogUI[scenId]) {
+    state.backlogUI[scenId] = { filterPriority: "All", filterStatus: "All", filterRole: "All" };
+  }
+  if (!state.activity[scenId]) {
+    state.activity[scenId] = { backlogTouchedIds: [], chatCount: 0 };
+  }
+  if (typeof state.reflections[scenId] !== "string") state.reflections[scenId] = "";
+  if (!state.classView[scenId]) state.classView[scenId] = { groups: [] };
+}
+
+function deleteScenario(id) {
+  if (!id) return false;
+  const custom = getCustomScenarios();
+  const idx = custom.findIndex(s => s.id === id);
+  if (idx === -1) return false;
+
+  custom.splice(idx, 1);
+  if (state.activeScenario) delete state.activeScenario[id];
+  if (state.roles) delete state.roles[id];
+  if (state.workspace) delete state.workspace[id];
+  if (state.chats) delete state.chats[id];
+  if (state.backlogUI) delete state.backlogUI[id];
+  if (state.activity) delete state.activity[id];
+  if (state.reflections) delete state.reflections[id];
+  if (state.classView) delete state.classView[id];
+  if (state.user.selectedScenarioId === id) state.user.selectedScenarioId = null;
+  if (state.ui?.createScenario?.form?.scenarioId === id) state.ui.createScenario.form = {};
+
+  return true;
+}
+
+function defaultPersonas() {
+  return [
+    {
+      id: "customer",
+      name: "Customer",
+      subtitle: "Primary user",
+      bio: "Shares needs, constraints, and success criteria."
+    },
+    {
+      id: "warehouse",
+      name: "Operations",
+      subtitle: "Process owner",
+      bio: "Explains workflow steps and operational pain points."
+    },
+    {
+      id: "manager",
+      name: "Manager",
+      subtitle: "Decision maker",
+      bio: "Sets priorities, risks, and outcomes."
+    }
+  ];
+}
+
+function createCustomScenarioDraft() {
+  const id = nextScenarioId();
+  const scenario = {
+    id,
+    title: "New Scenario",
+    short: "Custom scenario created by professor.",
+    status: "Not active",
+    active: false,
+    overview: "",
+    goals: [],
+    constraints: [],
+    personas: defaultPersonas(),
+    successCriteria: []
+  };
+  getCustomScenarios().push(scenario);
+  ensureScenarioState(id);
+  return scenario;
+}
+
+function listToMultiline(items) {
+  return Array.isArray(items) ? items.join("\n") : "";
+}
+
+function parseLines(text) {
+  return String(text || "")
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+function personasToText(personas) {
+  if (!Array.isArray(personas)) return "";
+  return personas
+    .map(p => `${p.name || ""} | ${p.subtitle || ""} | ${p.bio || ""}`.trim())
+    .join("\n");
+}
+
+function parsePersonas(text) {
+  const lines = parseLines(text);
+  if (!lines.length) return null;
+  return lines.map((line, idx) => {
+    const parts = line.split("|").map(part => part.trim()).filter(Boolean);
+    const name = parts[0] || `Persona ${idx + 1}`;
+    const subtitle = parts[1] || "Stakeholder";
+    const bio = parts.slice(2).join(" | ") || "Provides context and feedback.";
+    return {
+      id: `persona-${idx + 1}`,
+      name,
+      subtitle,
+      bio
+    };
+  });
+}
+
+function migrateScenarioNames() {
+  const from = "Test Scenario A";
+  const fromLegacy = "Returns Management App";
+  const to = "Scenario 01 – Returns Management App";
+  let changed = false;
+
+  if (state.activeScenario) {
+    Object.keys(state.activeScenario).forEach((id) => {
+      const entry = state.activeScenario[id];
+      if (entry && (entry.name === from || entry.name === fromLegacy)) {
+        entry.name = to;
+        changed = true;
+      }
+    });
+  }
+
+  getCustomScenarios().forEach((scen) => {
+    if (scen.title === from || scen.title === fromLegacy) {
+      scen.title = to;
+      changed = true;
+    }
+  });
+
+  return changed;
 }
 
 function icon(name) {
@@ -478,10 +719,27 @@ function defaultState() {
         loginForm: { email: "", password: "" }
       },
       createScenario: {
-        form: { name: "", cohort: "", startDate: "", endDate: "", notes: "", isActive: true },
+        form: {
+          name: "",
+          cohort: "",
+          startDate: "",
+          endDate: "",
+          notes: "",
+          short: "",
+          overview: "",
+          goals: "",
+          constraints: "",
+          successCriteria: "",
+          personas: "",
+          status: "In progress"
+        },
         errors: {}
       }
     },
+    meta: {
+      scenarioSeq: 1
+    },
+    customScenarios: [],
     // Active scenario instance flags (UI-only)
     activeScenario: {
       scenario01: { isActive: true } // keep true for MVP demo
@@ -546,7 +804,7 @@ function defaultState() {
 
 let state = loadState() || defaultState();
 
-const RESET_STATE_ON_LOAD = true;
+const RESET_STATE_ON_LOAD = false;
 
 function applyAppScale() {
   const w = window.innerWidth;
@@ -597,6 +855,12 @@ function header({ title = "SprintLab", subtitle = "", showBack = false, backRout
       <div id="profileMenu" class="card" style="position:absolute;top:44px;right:0;z-index:20;padding:8px;min-width:170px;">
         <button class="btn btn-ghost btn-full" id="btnProfileDashboard" style="text-align:left;padding:10px 12px;">
           ${icon("layout-dashboard")} <span style="margin-left:8px;">ScenarioHub</span>
+        </button>
+        <button class="btn btn-ghost btn-full" id="btnProfileScenarios" style="text-align:left;padding:10px 12px;">
+          ${icon("list")} <span style="margin-left:8px;">Available Scenarios</span>
+        </button>
+        <button class="btn btn-ghost btn-full" id="btnProfileReset" style="text-align:left;padding:10px 12px;">
+          ${icon("refresh-ccw")} <span style="margin-left:8px;">Reset App</span>
         </button>
         <button class="btn btn-ghost btn-full" id="btnProfileLogout" style="text-align:left;padding:10px 12px;">
           ${icon("log-out")} <span style="margin-left:8px;">Log out</span>
@@ -769,20 +1033,40 @@ function screenDashboard() {
   const ui = state.ui.dashboard;
   const query = (ui.search || "").trim().toLowerCase();
 
-  let list = DATA.scenarios.map(s => {
-    const activeConfig = state.activeScenario[s.id];
-    const isActive = activeConfig ? !!activeConfig.isActive : !!s.active;
-    const status = activeConfig ? (isActive ? "In progress" : "Not active") : s.status;
+  let list = getAllScenarios().map((s, idx) => {
+    const activeConfig = state.activeScenario ? state.activeScenario[s.id] : null;
+    const isCustom = isCustomScenario(s.id);
+    const baseStatus = s.status || "Not active";
+    const status = activeConfig && activeConfig.status ? activeConfig.status : baseStatus;
+    const isActive = activeConfig ? !!activeConfig.isActive : status === "In progress";
+    const displayTitle = getScenarioDisplayTitle(s);
+    const assignedRole = isActive ? getAssignedRoleForScenario(s.id) : null;
     const userRoleTag = isActive
-      ? (state.user.selectedScenarioId === s.id ? currentRoleLabel() : "Unassigned")
+      ? (assignedRole || (state.user.selectedScenarioId === s.id ? currentRoleLabel() : "Unassigned"))
       : "Unassigned";
 
     return {
       ...s,
+      title: displayTitle,
       userRoleTag,
       active: isActive,
-      status
+      status,
+      __index: idx,
+      __isCustom: isCustom,
+      __isActive: isActive
     };
+  });
+
+  list.sort((a, b) => {
+    const group = (item) => {
+      if (item.status === "In progress") return 0;
+      if (item.status === "Coming soon") return 1;
+      return 2;
+    };
+    const ga = group(a);
+    const gb = group(b);
+    if (ga !== gb) return ga - gb;
+    return a.__index - b.__index;
   });
 
   // Apply search
@@ -885,8 +1169,12 @@ function screenDashboard() {
 }
 
 function scenarioCard(s) {
-  const disabled = !s.active;
+  const isInactive = s.status !== "In progress";
+  const isLocked = isInactive && !isProfessor();
+  const disabled = isLocked;
   const roleTag = s.userRoleTag;
+  const openBtnClass = isInactive ? "btn-secondary" : "btn-primary";
+  const canDelete = isProfessor() && isCustomScenario(s.id);
 
   const statusBadge =
     s.status === "In progress"
@@ -897,12 +1185,24 @@ function scenarioCard(s) {
 
   const openBtn = disabled
     ? `<button class="btn btn-secondary" disabled style="opacity:0.55;">Locked</button>`
-    : `<button class="btn btn-primary" data-open-scenario="${escapeHtml(s.id)}" style="padding:10px 12px;border-radius:12px;">Open</button>`;
+    : `<button class="btn ${openBtnClass}" data-open-scenario="${escapeHtml(s.id)}" style="padding:10px 12px;border-radius:12px;">Open</button>`;
 
-  const lockIcon = disabled ? `<div style="color:#94a3b8;">${icon("lock")}</div>` : "";
+  const editBtn = isProfessor()
+    ? `<button class="btn btn-secondary" data-edit-scenario="${escapeHtml(s.id)}" style="padding:10px 12px;border-radius:12px;">Edit</button>`
+    : "";
+
+  const deleteBtn = canDelete
+    ? `<button class="btn btn-danger" data-delete-scenario="${escapeHtml(s.id)}" style="padding:10px 12px;border-radius:12px;">Delete</button>`
+    : "";
+
+  const actions = isProfessor()
+    ? `<div style="display:flex;gap:8px;align-items:center;">${openBtn}${editBtn}${deleteBtn}</div>`
+    : openBtn;
+
+  const lockIcon = isLocked ? `<div style="color:#94a3b8;">${icon("lock")}</div>` : "";
 
   return `
-    <div class="card" style="${disabled ? "opacity:0.5;" : ""}">
+    <div class="card" style="${isInactive ? "opacity:0.5;" : ""}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
         <div style="display:flex;gap:10px;align-items:flex-start;">
           ${lockIcon}
@@ -914,9 +1214,9 @@ function scenarioCard(s) {
         <div>${statusBadge}</div>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;">
         <div class="small">Role: ${escapeHtml(roleTag)}</div>
-        ${openBtn}
+        ${actions}
       </div>
     </div>
   `;
@@ -988,14 +1288,18 @@ function screenScenarioOverview() {
   if (!requireAuthOrRedirect()) return "";
 
   const scenId = state.nav.params.templateId || state.user.selectedScenarioId;
-  const scen = DATA.scenarios.find(s => s.id === scenId);
+  const scen = getScenarioById(scenId);
   if (!scen) return screenDashboard();
 
-  const subtitle = scen.title;
+  const isTemplateView = !!state.nav.params.templateId;
+  const resolvedScenario = isTemplateView ? scen : applyScenarioOverrides(scen);
+  const displayTitle = getScenarioDisplayTitle(resolvedScenario, { preferInstance: !isTemplateView });
+  const subtitle = displayTitle;
   const backRoute = state.nav.params.from === "templates" ? "templates" : "home";
   const isActiveInstance = !!state.activeScenario[scen.id]?.isActive;
+  const canActivate = scen.active || isCustomScenario(scen.id);
 
-  const personaCards = (scen.personas || []).map(p => `
+  const personaCards = (resolvedScenario.personas || []).map(p => `
     <div class="card" style="padding:12px;">
       <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(p.name)}</div>
       <div class="small" style="margin-bottom:8px;">${escapeHtml(p.subtitle)}</div>
@@ -1003,39 +1307,39 @@ function screenScenarioOverview() {
     </div>
   `).join("");
 
-  const createBtn = isProfessor() && scen.active
+  const createBtn = isProfessor() && canActivate
     ? `<button class="btn btn-primary" id="btnCreateActive" style="margin-top:12px;">
          ${isActiveInstance ? "Edit active scenario" : "Create active scenario"}
        </button>`
     : "";
 
-  const continueBtn = scen.active && isActiveInstance
+  const continueBtn = canActivate && isActiveInstance
     ? `<button class="btn btn-primary" id="btnContinueRoles">Continue to role selection</button>`
     : "";
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute })}
     <div class="screen">
-      <h1 style="margin-bottom:6px;">${escapeHtml(scen.title)}</h1>
-      <p style="margin-bottom:14px;">${escapeHtml(scen.short || "Scenario overview")}</p>
+      <h1 style="margin-bottom:6px;">${escapeHtml(displayTitle)}</h1>
+      <p style="margin-bottom:14px;">${escapeHtml(resolvedScenario.short || "Scenario overview")}</p>
 
       <h2 style="margin:14px 0 8px;">Overview</h2>
-      ${scen.overview
-        ? `<p>${escapeHtml(scen.overview)}</p>`
+      ${resolvedScenario.overview
+        ? `<p>${escapeHtml(resolvedScenario.overview)}</p>`
         : `<div class="info-box">Detailed overview coming soon for this scenario.</div>`
       }
 
       <h2 style="margin:18px 0 8px;">Goals</h2>
       <div class="card" style="padding:12px;">
         <ul style="margin:0;padding-left:18px;color:#475569;">
-          ${(scen.goals || []).map(g => `<li style="margin:8px 0;">${escapeHtml(g)}</li>`).join("")}
+          ${(resolvedScenario.goals || []).map(g => `<li style="margin:8px 0;">${escapeHtml(g)}</li>`).join("")}
         </ul>
       </div>
 
       <h2 style="margin:18px 0 8px;">Constraints</h2>
       <div class="card" style="padding:12px;">
         <ul style="margin:0;padding-left:18px;color:#475569;">
-          ${(scen.constraints || []).map(c => `<li style="margin:8px 0;">${escapeHtml(c)}</li>`).join("")}
+          ${(resolvedScenario.constraints || []).map(c => `<li style="margin:8px 0;">${escapeHtml(c)}</li>`).join("")}
         </ul>
       </div>
 
@@ -1045,7 +1349,7 @@ function screenScenarioOverview() {
       <h2 style="margin:18px 0 8px;">Success criteria</h2>
       <div class="card" style="padding:12px;">
         <ul style="margin:0;padding-left:18px;color:#475569;">
-          ${(scen.successCriteria || []).map(sc => `<li style="margin:8px 0;">${escapeHtml(sc)}</li>`).join("")}
+          ${(resolvedScenario.successCriteria || []).map(sc => `<li style="margin:8px 0;">${escapeHtml(sc)}</li>`).join("")}
         </ul>
       </div>
 
@@ -1070,11 +1374,20 @@ function screenCreateScenario() {
   const scen = getSelectedScenario();
   if (!scen) return screenDashboard();
 
-  const subtitle = `${scen.title}`;
+  const baseScenario = getScenarioById(scen.id) || scen;
+  const subtitle = getScenarioDisplayTitle(baseScenario);
   const form = state.ui.createScenario.form || {};
   const errs = state.ui.createScenario.errors || {};
-  const existing = state.activeScenario[scen.id] || {};
-  const isActive = typeof form.isActive === "boolean" ? form.isActive : !!existing.isActive;
+  const existing = state.activeScenario?.[scen.id] || {};
+  const nameValue = form.name ?? existing.name ?? baseScenario.title;
+  const shortValue = form.short ?? existing.short ?? baseScenario.short ?? "";
+  const overviewValue = form.overview ?? existing.overview ?? baseScenario.overview ?? "";
+  const goalsValue = form.goals ?? listToMultiline(existing.goals ?? baseScenario.goals);
+  const constraintsValue = form.constraints ?? listToMultiline(existing.constraints ?? baseScenario.constraints);
+  const successValue = form.successCriteria ?? listToMultiline(existing.successCriteria ?? baseScenario.successCriteria);
+  const personasValue = form.personas ?? personasToText(existing.personas ?? baseScenario.personas);
+  const statusValue = form.status ?? existing.status ?? baseScenario.status ?? (existing.isActive ? "In progress" : "Not active");
+  const statusOptions = ["In progress", "Not active", "Coming soon"];
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "overview" })}
@@ -1085,44 +1398,78 @@ function screenCreateScenario() {
       <div class="input-group">
         <label>Exercise name</label>
         <input id="csName" type="text" placeholder="Scenario 01 – Returns Management App"
-               value="${escapeHtml(form.name || existing.name || scen.title)}" />
+               value="${escapeHtml(nameValue)}" />
         ${errs.name ? `<div class="input-error">${escapeHtml(errs.name)}</div>` : ""}
+      </div>
+
+      <div class="input-group">
+        <label>Short description (optional)</label>
+        <input id="csShort" type="text" placeholder="Brief summary shown on the dashboard"
+               value="${escapeHtml(shortValue)}" />
+      </div>
+
+      <div class="input-group">
+        <label>Overview (optional)</label>
+        <textarea id="csOverview" rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="High-level scenario context...">${escapeHtml(overviewValue)}</textarea>
+      </div>
+
+      <div class="input-group">
+        <label>Goals (optional, one per line)</label>
+        <textarea id="csGoals" rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="List the scenario goals...">${escapeHtml(goalsValue)}</textarea>
+      </div>
+
+      <div class="input-group">
+        <label>Constraints (optional, one per line)</label>
+        <textarea id="csConstraints" rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="List constraints or assumptions...">${escapeHtml(constraintsValue)}</textarea>
+      </div>
+
+      <div class="input-group">
+        <label>Personas (optional, one per line)</label>
+        <textarea id="csPersonas" rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="Name | Subtitle | Bio">${escapeHtml(personasValue)}</textarea>
+      </div>
+
+      <div class="input-group">
+        <label>Success criteria (optional, one per line)</label>
+        <textarea id="csSuccess" rows="4" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
+          placeholder="List success criteria...">${escapeHtml(successValue)}</textarea>
       </div>
 
       <div class="input-group">
         <label>Cohort / class</label>
         <input id="csCohort" type="text" placeholder="PM Bootcamp – Group A"
-               value="${escapeHtml(form.cohort || existing.cohort || "")}" />
+               value="${escapeHtml(form.cohort ?? existing.cohort ?? "")}" />
       </div>
 
       <div class="input-group">
         <label>Start date</label>
-        <input id="csStart" type="date" value="${escapeHtml(form.startDate || existing.startDate || "")}" />
+        <input id="csStart" type="date" value="${escapeHtml(form.startDate ?? existing.startDate ?? "")}" />
         ${errs.startDate ? `<div class="input-error">${escapeHtml(errs.startDate)}</div>` : ""}
       </div>
 
       <div class="input-group">
         <label>End date (optional)</label>
-        <input id="csEnd" type="date" value="${escapeHtml(form.endDate || existing.endDate || "")}" />
+        <input id="csEnd" type="date" value="${escapeHtml(form.endDate ?? existing.endDate ?? "")}" />
       </div>
 
       <div class="input-group">
         <label>Notes (optional)</label>
         <textarea id="csNotes" rows="3" style="width:100%;padding:12px;border:1px solid #cbd5f5;border-radius:10px;resize:none;"
-          placeholder="Instructions for students...">${escapeHtml(form.notes || existing.notes || "")}</textarea>
+          placeholder="Instructions for students...">${escapeHtml(form.notes ?? existing.notes ?? "")}</textarea>
       </div>
 
       <div class="card" style="padding:12px;margin-bottom:12px;">
-        <div style="font-weight:600;margin-bottom:8px;">Availability</div>
+        <div style="font-weight:600;margin-bottom:8px;">Scenario status</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn ${isActive ? "btn-primary" : "btn-secondary"}" id="btnSetActive" type="button"
-                  style="padding:8px 12px;border-radius:999px;font-size:12px;">
-            Active for students
-          </button>
-          <button class="btn ${!isActive ? "btn-primary" : "btn-secondary"}" id="btnSetInactive" type="button"
-                  style="padding:8px 12px;border-radius:999px;font-size:12px;">
-            Not active
-          </button>
+          ${statusOptions.map(status => `
+            <button class="btn ${statusValue === status ? "btn-primary" : "btn-secondary"}" data-status-option="${escapeHtml(status)}" type="button"
+                    style="padding:8px 12px;border-radius:999px;font-size:12px;">
+              ${escapeHtml(status)}
+            </button>
+          `).join("")}
         </div>
       </div>
 
@@ -1158,15 +1505,27 @@ function screenRoleDistribution() {
     const extraStyle = clickable ? "cursor:pointer;" : "opacity:1;";
 
     // Professor assign control (UI-only)
+    const clearBtn = isProfessor() && assigned
+      ? `
+        <button class="btn btn-ghost renounce-btn"
+                data-prof-unassign-btn="${escapeHtml(r.name)}"
+                title="Unassign role"
+                aria-label="Unassign role">
+          ${icon("x")}
+        </button>
+      `
+      : "";
+
     const profAssign = isProfessor()
       ? `
-        <div style="margin-top:10px;display:flex;gap:10px;">
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
           <input type="text" placeholder="Student name"
                  data-prof-assign-input="${escapeHtml(r.name)}"
                  style="flex:1;padding:10px;border:1px solid #cbd5f5;border-radius:10px;" />
           <button class="btn btn-secondary" data-prof-assign-btn="${escapeHtml(r.name)}" style="padding:10px 12px;border-radius:12px;">
             Assign
           </button>
+          ${clearBtn}
         </div>
       `
       : "";
@@ -1693,13 +2052,14 @@ function screenOutcomeStudent() {
   const scen = getSelectedScenario();
   if (!scen) return screenDashboard();
 
-  const subtitle = `${scen.title} - ${currentRoleLabel()}`;
+  const displayTitle = getScenarioDisplayTitle(scen);
+  const subtitle = `${displayTitle} - ${currentRoleLabel()}`;
   const stepClass = "step active";
 
   return `
     ${header({ title: "SprintLab", subtitle, showBack: true, backRoute: "hub" })}
     <div class="screen">
-      <h1 style="margin-bottom:6px;">Simulation Outcome – Scenario 01</h1>
+      <h1 style="margin-bottom:6px;">Simulation Outcome - ${escapeHtml(displayTitle)}</h1>
       <p style="margin-bottom:14px;">Review your progress and reflect on the experience</p>
 
       <h2 style="margin:12px 0 10px;">Step Timeline</h2>
@@ -1877,6 +2237,28 @@ function bindGlobalActions() {
         saveState();
       }
       setRoute("hub");
+    });
+  }
+
+  const scenarios = document.getElementById("btnProfileScenarios");
+  if (scenarios) {
+    scenarios.addEventListener("click", () => {
+      state.ui.profileMenuOpen = false;
+      state.user.selectedScenarioId = null;
+      saveState();
+      setRoute("home");
+    });
+  }
+
+  const reset = document.getElementById("btnProfileReset");
+  if (reset) {
+    reset.addEventListener("click", () => {
+      if (!window.confirm("Reset all app data and return to the landing page?")) return;
+      localStorage.removeItem(LS_KEY);
+      state = defaultState();
+      state.nav.route = "landing";
+      saveState();
+      render();
     });
   }
 
@@ -2100,7 +2482,23 @@ function bindDashboard() {
   const createScenario = document.getElementById("btnCreateScenario");
   if (createScenario) {
     createScenario.addEventListener("click", () => {
-      state.user.selectedScenarioId = "scenario01";
+      const scenario = createCustomScenarioDraft();
+      state.user.selectedScenarioId = scenario.id;
+      state.ui.createScenario.form = {
+        name: "",
+        cohort: "",
+        startDate: "",
+        endDate: "",
+        notes: "",
+        short: "",
+        overview: "",
+        goals: "",
+        constraints: "",
+        successCriteria: "",
+        personas: "",
+        status: "In progress"
+      };
+      state.ui.createScenario.errors = {};
       saveState();
       setRoute("create_scenario");
     });
@@ -2154,8 +2552,32 @@ function bindDashboard() {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-open-scenario");
       state.user.selectedScenarioId = id;
+      ensureScenarioState(id);
       saveState();
       setRoute("overview", { from: "home" });
+    });
+  });
+
+  document.querySelectorAll("[data-edit-scenario]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-edit-scenario");
+      state.user.selectedScenarioId = id;
+      ensureScenarioState(id);
+      state.ui.createScenario.form = { scenarioId: id };
+      state.ui.createScenario.errors = {};
+      saveState();
+      setRoute("create_scenario");
+    });
+  });
+
+  document.querySelectorAll("[data-delete-scenario]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-delete-scenario");
+      if (!id) return;
+      if (!window.confirm("Delete this scenario? This cannot be undone.")) return;
+      if (!deleteScenario(id)) return;
+      saveState();
+      render();
     });
   });
 }
@@ -2189,6 +2611,9 @@ function bindOverview() {
     btn.addEventListener("click", () => {
       const scen = getSelectedScenario();
       if (!scen) return;
+      state.ui.createScenario.form = { scenarioId: scen.id };
+      state.ui.createScenario.errors = {};
+      saveState();
       setRoute("create_scenario");
     });
   }
@@ -2197,42 +2622,47 @@ function bindOverview() {
 function bindCreateScenario() {
   const scen = getSelectedScenario();
   if (!scen) return;
+  const existing = state.activeScenario?.[scen.id] || {};
 
   const name = document.getElementById("csName");
+  const short = document.getElementById("csShort");
+  const overview = document.getElementById("csOverview");
+  const goals = document.getElementById("csGoals");
+  const constraints = document.getElementById("csConstraints");
+  const personas = document.getElementById("csPersonas");
+  const success = document.getElementById("csSuccess");
   const cohort = document.getElementById("csCohort");
   const start = document.getElementById("csStart");
   const end = document.getElementById("csEnd");
   const notes = document.getElementById("csNotes");
-  const activeBtn = document.getElementById("btnSetActive");
-  const inactiveBtn = document.getElementById("btnSetInactive");
   const saveBtn = document.getElementById("btnSaveScenario");
 
   if (name) name.addEventListener("input", (e) => { state.ui.createScenario.form.name = e.target.value; saveState(); });
+  if (short) short.addEventListener("input", (e) => { state.ui.createScenario.form.short = e.target.value; saveState(); });
+  if (overview) overview.addEventListener("input", (e) => { state.ui.createScenario.form.overview = e.target.value; saveState(); });
+  if (goals) goals.addEventListener("input", (e) => { state.ui.createScenario.form.goals = e.target.value; saveState(); });
+  if (constraints) constraints.addEventListener("input", (e) => { state.ui.createScenario.form.constraints = e.target.value; saveState(); });
+  if (personas) personas.addEventListener("input", (e) => { state.ui.createScenario.form.personas = e.target.value; saveState(); });
+  if (success) success.addEventListener("input", (e) => { state.ui.createScenario.form.successCriteria = e.target.value; saveState(); });
   if (cohort) cohort.addEventListener("input", (e) => { state.ui.createScenario.form.cohort = e.target.value; saveState(); });
   if (start) start.addEventListener("input", (e) => { state.ui.createScenario.form.startDate = e.target.value; saveState(); });
   if (end) end.addEventListener("input", (e) => { state.ui.createScenario.form.endDate = e.target.value; saveState(); });
   if (notes) notes.addEventListener("input", (e) => { state.ui.createScenario.form.notes = e.target.value; saveState(); });
-  if (activeBtn) {
-    activeBtn.addEventListener("click", () => {
-      state.ui.createScenario.form.isActive = true;
+  document.querySelectorAll("[data-status-option]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.ui.createScenario.form.status = btn.getAttribute("data-status-option");
       saveState();
       render();
     });
-  }
-  if (inactiveBtn) {
-    inactiveBtn.addEventListener("click", () => {
-      state.ui.createScenario.form.isActive = false;
-      saveState();
-      render();
-    });
-  }
+  });
 
   if (saveBtn) {
     saveBtn.addEventListener("click", () => {
       const f = state.ui.createScenario.form || {};
+      const baseScenario = getScenarioById(scen.id) || scen;
       const errs = {};
-      if (!String(f.name || "").trim()) errs.name = "Exercise name is required.";
-      if (!String(f.startDate || "").trim()) errs.startDate = "Start date is required.";
+      if (!String(f.name ?? existing.name ?? baseScenario.title ?? "").trim()) errs.name = "Exercise name is required.";
+      if (!String(f.startDate ?? existing.startDate ?? "").trim()) errs.startDate = "Start date is required.";
 
       if (Object.keys(errs).length) {
         state.ui.createScenario.errors = errs;
@@ -2241,15 +2671,62 @@ function bindCreateScenario() {
         return;
       }
 
+      const name = (f.name ?? existing.name ?? baseScenario.title).trim();
+      const shortText = (f.short ?? existing.short ?? baseScenario.short ?? "").trim();
+      const overviewText = (f.overview ?? existing.overview ?? baseScenario.overview ?? "").trim();
+      const goals = f.goals === undefined
+        ? ((existing.goals ?? baseScenario.goals) || [])
+        : parseLines(f.goals);
+      const constraints = f.constraints === undefined
+        ? ((existing.constraints ?? baseScenario.constraints) || [])
+        : parseLines(f.constraints);
+      const successCriteria = f.successCriteria === undefined
+        ? ((existing.successCriteria ?? baseScenario.successCriteria) || [])
+        : parseLines(f.successCriteria);
+      let personasList = null;
+      if (f.personas === undefined) {
+        personasList = existing.personas ?? baseScenario.personas ?? defaultPersonas();
+      } else if (!String(f.personas || "").trim()) {
+        personasList = [];
+      } else {
+        personasList = parsePersonas(f.personas) || [];
+      }
+
+      const status = f.status ?? existing.status ?? baseScenario.status ?? "Not active";
+      const isActive = status === "In progress";
+
+      ensureScenarioState(scen.id);
+      if (!state.activeScenario) state.activeScenario = {};
       state.activeScenario[scen.id] = {
-        isActive: f.isActive !== false,
-        name: f.name.trim(),
-        cohort: (f.cohort || "").trim(),
-        startDate: f.startDate,
+        isActive,
+        status,
+        name,
+        short: shortText,
+        overview: overviewText,
+        goals,
+        constraints,
+        successCriteria,
+        personas: personasList,
+        cohort: (f.cohort ?? existing.cohort ?? "").trim(),
+        startDate: f.startDate ?? existing.startDate ?? "",
         endDate: f.endDate || "",
-        notes: (f.notes || "").trim(),
+        notes: (f.notes ?? existing.notes ?? "").trim(),
         createdAt: nowIso()
       };
+      if (isCustomScenario(scen.id)) {
+        const entry = getCustomScenarios().find(s => s.id === scen.id);
+        if (entry) {
+          entry.title = name;
+          entry.short = shortText;
+          entry.overview = overviewText;
+          entry.goals = goals;
+          entry.constraints = constraints;
+          entry.successCriteria = successCriteria;
+          entry.personas = personasList;
+          entry.status = status;
+          entry.active = isActive;
+        }
+      }
       state.ui.createScenario.errors = {};
       saveState();
       setRoute("roles");
@@ -2306,6 +2783,25 @@ function bindRoles() {
 
       entry.status = "assigned";
       entry.person = name;
+
+      saveState();
+      render();
+    });
+  });
+
+  // Professor unassign role
+  document.querySelectorAll("[data-prof-unassign-btn]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const role = btn.getAttribute("data-prof-unassign-btn");
+      const scen = getSelectedScenario();
+      if (!scen) return;
+
+      const roles = state.roles[scen.id] || [];
+      const entry = roles.find(r => r.name === role);
+      if (!entry) return;
+
+      entry.status = "available";
+      entry.person = null;
 
       saveState();
       render();
@@ -2647,6 +3143,8 @@ header = function (opts = {}) {
   } else {
     state.nav.route = "landing";
   }
+  migrateScenarioNames();
+  syncAssignedRole();
   saveState();
   render();
 })();
