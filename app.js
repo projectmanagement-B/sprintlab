@@ -734,6 +734,10 @@ function defaultState() {
           status: "In progress"
         },
         errors: {}
+      },
+      roleAssign: {
+        assignErrors: {},
+        selfAssignError: ""
       }
     },
     meta: {
@@ -1487,6 +1491,7 @@ function screenRoleDistribution() {
 
   const roles = state.roles[scen.id] || [];
   const subtitle = `${scen.title}`;
+  const ui = state.ui.roleAssign || { assignErrors: {}, selfAssignError: "" };
 
   const hint = `
     <div class="info-box" style="margin-top:12px;">
@@ -1498,8 +1503,10 @@ function screenRoleDistribution() {
     const assigned = r.status === "assigned";
     const statusChip = assigned ? badge("Assigned", "success") : badge("Available", "gray");
     const personLine = assigned ? escapeHtml(r.person || "Assigned") : "No student assigned";
+    const roleDesc = roleDescription(r.name);
+    const assignError = ui.assignErrors?.[r.name];
 
-    // Student self-select: only if available and professor didn’t lock it
+    // Student self-select: only if available and professor didn't lock it
     const clickable = !isProfessor() && r.status === "available";
     const cardAttrs = clickable ? `data-pick-role="${escapeHtml(r.name)}"` : "";
     const extraStyle = clickable ? "cursor:pointer;" : "opacity:1;";
@@ -1527,6 +1534,7 @@ function screenRoleDistribution() {
           </button>
           ${clearBtn}
         </div>
+        ${assignError ? `<div class="input-error" style="margin-top:6px;">${escapeHtml(assignError)}</div>` : ""}
       `
       : "";
 
@@ -1536,6 +1544,7 @@ function screenRoleDistribution() {
           <div>
             <div style="font-weight:600;font-size:15px;">${escapeHtml(r.label)}</div>
             <div class="small" style="margin-top:4px;">${escapeHtml(personLine)}</div>
+            <div class="small" style="margin-top:6px;color:#94a3b8;">${escapeHtml(roleDesc)}</div>
           </div>
           <div>${statusChip}</div>
         </div>
@@ -1555,6 +1564,10 @@ function screenRoleDistribution() {
     `
     : "";
 
+  const selfError = ui.selfAssignError
+    ? `<div class="input-error" style="margin-top:10px;">${escapeHtml(ui.selfAssignError)}</div>`
+    : "";
+
   const saveDistributionBtn = isProfessor()
     ? `<button class="btn btn-primary btn-full" id="btnSaveDistribution" style="margin-top:14px;">Save distribution</button>`
     : "";
@@ -1568,6 +1581,7 @@ function screenRoleDistribution() {
       <h2 style="margin:12px 0 8px;">Team Roles</h2>
       ${rows}
       ${hint}
+      ${selfError}
       ${confirmBlock}
       ${saveDistributionBtn}
 
@@ -2735,10 +2749,16 @@ function bindCreateScenario() {
 }
 
 function bindRoles() {
+  if (!state.ui.roleAssign) {
+    state.ui.roleAssign = { assignErrors: {}, selfAssignError: "" };
+  }
+
   // Student: click available role
   document.querySelectorAll("[data-pick-role]").forEach(card => {
     card.addEventListener("click", () => {
       const role = card.getAttribute("data-pick-role");
+      state.ui.roleAssign.selfAssignError = "";
+      saveState();
       setRoute("roles", { selectedRole: role });
     });
   });
@@ -2757,10 +2777,19 @@ function bindRoles() {
 
       if (!entry || entry.status !== "available") return;
 
+      const existingRole = getAssignedRoleForScenario(scen.id);
+      if (existingRole && existingRole !== selected) {
+        state.ui.roleAssign.selfAssignError = `You are already assigned to ${existingRole}. Unassign it first.`;
+        saveState();
+        render();
+        return;
+      }
+
       entry.status = "assigned";
       entry.person = state.user.name;
 
       state.user.role = selected;
+      state.ui.roleAssign.selfAssignError = "";
       saveState();
       setRoute("workspace");
     });
@@ -2781,9 +2810,19 @@ function bindRoles() {
       const entry = roles.find(r => r.name === role);
       if (!entry) return;
 
+      const nameKey = normalizeKey(name);
+      const existing = roles.find(r => r.status === "assigned" && normalizeKey(r.person) === nameKey);
+      if (existing && existing.name !== role) {
+        state.ui.roleAssign.assignErrors[role] = `Student is already assigned to ${existing.name}.`;
+        saveState();
+        render();
+        return;
+      }
+
       entry.status = "assigned";
       entry.person = name;
 
+      state.ui.roleAssign.assignErrors[role] = "";
       saveState();
       render();
     });
@@ -2803,6 +2842,7 @@ function bindRoles() {
       entry.status = "available";
       entry.person = null;
 
+      state.ui.roleAssign.assignErrors[role] = "";
       saveState();
       render();
     });
