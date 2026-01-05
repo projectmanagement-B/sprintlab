@@ -714,6 +714,33 @@ button {
   border: 1px solid #cbd5f5;
 }
 
+.persona-profile summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.persona-profile summary::-webkit-details-marker {
+  display: none;
+}
+
+.persona-profile summary::after {
+  content: "Expand";
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.persona-profile[open] summary {
+  margin-bottom: 8px;
+}
+
+.persona-profile[open] summary::after {
+  content: "Collapse";
+}
+
 /* =========================================================
    17. BACKLOG
    ========================================================= */

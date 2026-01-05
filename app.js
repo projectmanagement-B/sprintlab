@@ -236,19 +236,28 @@ function defaultPersonas() {
       id: "customer",
       name: "Customer",
       subtitle: "Primary user",
-      bio: "Shares needs, constraints, and success criteria."
+      bio: "Shares needs, constraints, and success criteria.",
+      goals: [],
+      painPoints: [],
+      needs: []
     },
     {
       id: "warehouse",
       name: "Operations",
       subtitle: "Process owner",
-      bio: "Explains workflow steps and operational pain points."
+      bio: "Explains workflow steps and operational pain points.",
+      goals: [],
+      painPoints: [],
+      needs: []
     },
     {
       id: "manager",
       name: "Manager",
       subtitle: "Decision maker",
-      bio: "Sets priorities, risks, and outcomes."
+      bio: "Sets priorities, risks, and outcomes.",
+      goals: [],
+      painPoints: [],
+      needs: []
     }
   ];
 }
@@ -374,19 +383,64 @@ const DATA = {
           id: "customer",
           name: "Customer",
           subtitle: "End-user requesting returns.",
-          bio: "Wants a simple, fast return experience with clear updates."
+          bio: "Wants a simple, fast return experience with clear updates.",
+          goals: [
+            "Start a return in under 2 minutes",
+            "Get a label immediately after submission",
+            "See clear status updates without contacting support"
+          ],
+          painPoints: [
+            "Unclear eligibility rules",
+            "Delayed or missing refund updates",
+            "Too many steps or forms"
+          ],
+          needs: [
+            "Eligibility rules visible upfront",
+            "Simple reason selection and optional comments",
+            "Transparent refund timing"
+          ]
         },
         {
           id: "warehouse",
           name: "Warehouse Operator",
           subtitle: "Physical inspection & processing.",
-          bio: "Inspects returns and processes approvals or rejections."
+          bio: "Inspects returns and processes approvals or rejections.",
+          goals: [
+            "Scan and find return requests quickly",
+            "Record inspection outcomes with minimal clicks",
+            "Keep workflow consistent across shifts"
+          ],
+          painPoints: [
+            "Missing or invalid barcodes",
+            "Unclear inspection criteria",
+            "Manual status updates"
+          ],
+          needs: [
+            "Fast lookup by barcode",
+            "Simple approve/reject reasons",
+            "Clear status transitions"
+          ]
         },
         {
           id: "manager",
           name: "Returns Manager",
           subtitle: "Process oversight & exceptions.",
-          bio: "Oversees return workflows and resolves exceptions."
+          bio: "Oversees return workflows and resolves exceptions.",
+          goals: [
+            "Reduce cycle time and manual effort",
+            "Improve status visibility for customers",
+            "Keep policies consistent across teams"
+          ],
+          painPoints: [
+            "Inconsistent status updates",
+            "Ambiguous policy interpretation",
+            "High support volume from returns"
+          ],
+          needs: [
+            "Clear policy messaging in UI",
+            "Basic reporting on return reasons",
+            "Simple exception handling"
+          ]
         }
       ],
       successCriteria: [
@@ -1854,6 +1908,48 @@ function screenChat() {
 
   const subtitle = `${scen.title} • ${persona.name}`;
 
+  const detailSections = [];
+  if (persona.goals?.length) {
+    detailSections.push(`
+      <div style="margin-top:8px;">
+        <div class="small" style="font-weight:600;color:#475569;">Goals</div>
+        <ul style="margin:6px 0 0 16px;color:#475569;">
+          ${persona.goals.map(g => `<li style="margin:4px 0;">${escapeHtml(g)}</li>`).join("")}
+        </ul>
+      </div>
+    `);
+  }
+  if (persona.painPoints?.length) {
+    detailSections.push(`
+      <div style="margin-top:8px;">
+        <div class="small" style="font-weight:600;color:#475569;">Pain points</div>
+        <ul style="margin:6px 0 0 16px;color:#475569;">
+          ${persona.painPoints.map(p => `<li style="margin:4px 0;">${escapeHtml(p)}</li>`).join("")}
+        </ul>
+      </div>
+    `);
+  }
+  if (persona.needs?.length) {
+    detailSections.push(`
+      <div style="margin-top:8px;">
+        <div class="small" style="font-weight:600;color:#475569;">Needs</div>
+        <ul style="margin:6px 0 0 16px;color:#475569;">
+          ${persona.needs.map(n => `<li style="margin:4px 0;">${escapeHtml(n)}</li>`).join("")}
+        </ul>
+      </div>
+    `);
+  }
+
+  const personaProfile = detailSections.length
+    ? `
+      <details class="card no-hover persona-profile" style="margin-top:10px;padding:12px;background:#f8fafc;">
+        <summary>Persona Profile</summary>
+        <div class="small" style="margin-top:6px;color:#64748b;">${escapeHtml(persona.bio || "")}</div>
+        ${detailSections.join("")}
+      </details>
+    `
+    : "";
+
   const chatState = state.chats[scen.id]?.[stakeholderId];
   const msgs = chatState?.messages || [];
 
@@ -1891,6 +1987,7 @@ function screenChat() {
               </button>
             `).join("")}
           </div>
+          ${personaProfile}
         </div>
 
         <div class="chat-messages" id="chatMessages">
