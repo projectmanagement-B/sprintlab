@@ -653,149 +653,179 @@ const DATA = {
         fallback: "Focus on stability, edge cases, and clear criteria."
       }
     },
-    customer: [
-      {
-        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
-        topic: "greeting",
-        reply:
-          "Hi! I can share how I want returns to work. Ask me about deadlines, labels, status updates, or photos."
+    customer: {
+      Tester: {
+        sequence: [
+          "I want to know what’s happening and when I’ll get my refund. Silence makes me nervous.",
+          "When the status doesn’t change for days and no one explains why. I end up contacting support.",
+          "If I don’t see updates or the refund takes longer than promised, I assume there’s a problem."
+        ],
+        fallback: "I just want clear status updates and my refund on time."
       },
-      {
-        match: ["return window", "eligible", "eligibility", "30", "deadline", "timeframe", "policy", "days"],
-        topic: "eligibility",
-        reply:
-          "I expect to return items within 30 days of purchase. If it's outside that, the app should clearly tell me I can't return it."
-      },
-      {
-        match: ["label", "shipping", "print", "printer", "qr", "drop off", "dropoff", "carrier"],
-        topic: "label",
-        reply:
-          "I want a shipping label right after I submit the return—ideally downloadable. If something fails, I need clear instructions."
-      },
-      {
-        match: ["status", "track", "tracking", "where", "update", "progress"],
-        topic: "status",
-        reply:
-          "I want to see the status in my account: Requested → Shipped → Received → Approved → Refunded. I also want to know what to do next."
-      },
-      {
-        match: ["refund", "money", "reimburse", "payment", "credit", "timeline", "how long"],
-        topic: "refund",
-        reply:
-          "Refund time should be transparent. If it takes 5–7 days, the app should show that and confirm when the refund is initiated."
-      },
-      {
-        match: ["reason", "dropdown", "defective", "wrong size", "changed mind", "comment", "notes"],
-        topic: "reasons",
-        reply:
-          "Give me simple reasons like 'Defective', 'Wrong size', 'Changed mind', and a comments box. Keep it fast."
-      },
-      {
-        match: ["photo", "image", "picture", "damage", "damaged"],
-        topic: "photo",
-        reply:
-          "If I can upload a photo of the damage, that should speed up approval. It should be optional but easy to add."
-      },
-      {
-        match: ["account", "history", "order"],
-        topic: "order",
-        reply:
-          "I want to start the return from my order history so I don't have to re-enter details."
-      },
-      {
-        match: [],
-        reply:
-          "My main priorities are: simple flow, clear eligibility, easy label download, and transparent status/refund updates."
-      }
-    ],
+      default: [
+        {
+          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+          topic: "greeting",
+          reply:
+            "Hi! I can share how I want returns to work. Ask me about deadlines, labels, status updates, or photos."
+        },
+        {
+          match: ["return window", "eligible", "eligibility", "30", "deadline", "timeframe", "policy", "days"],
+          topic: "eligibility",
+          reply:
+            "I expect to return items within 30 days of purchase. If it's outside that, the app should clearly tell me I can't return it."
+        },
+        {
+          match: ["label", "shipping", "print", "printer", "qr", "drop off", "dropoff", "carrier"],
+          topic: "label",
+          reply:
+            "I want a shipping label right after I submit the return—ideally downloadable. If something fails, I need clear instructions."
+        },
+        {
+          match: ["status", "track", "tracking", "where", "update", "progress"],
+          topic: "status",
+          reply:
+            "I want to see the status in my account: Requested → Shipped → Received → Approved → Refunded. I also want to know what to do next."
+        },
+        {
+          match: ["refund", "money", "reimburse", "payment", "credit", "timeline", "how long"],
+          topic: "refund",
+          reply:
+            "Refund time should be transparent. If it takes 5–7 days, the app should show that and confirm when the refund is initiated."
+        },
+        {
+          match: ["reason", "dropdown", "defective", "wrong size", "changed mind", "comment", "notes"],
+          topic: "reasons",
+          reply:
+            "Give me simple reasons like 'Defective', 'Wrong size', 'Changed mind', and a comments box. Keep it fast."
+        },
+        {
+          match: ["photo", "image", "picture", "damage", "damaged"],
+          topic: "photo",
+          reply:
+            "If I can upload a photo of the damage, that should speed up approval. It should be optional but easy to add."
+        },
+        {
+          match: ["account", "history", "order"],
+          topic: "order",
+          reply:
+            "I want to start the return from my order history so I don't have to re-enter details."
+        },
+        {
+          match: [],
+          reply:
+            "My main priorities are: simple flow, clear eligibility, easy label download, and transparent status/refund updates."
+        }
+      ]
+    },
 
-    warehouse: [
-      {
-        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
-        topic: "greeting",
-        reply:
-          "Hello. I can explain our receiving and inspection flow. Ask about scanning, inspection, or exceptions."
+    warehouse: {
+      Tester: {
+        sequence: [
+          "When I inspect an item, the system should update the status immediately. Otherwise, people keep asking me what happened.",
+          "Unclear or missing statuses. Sometimes I’m not sure if the next step already happened or not.",
+          "If I have to repeat steps or explain the same thing multiple times, something’s wrong."
+        ],
+        fallback: "I need clear status updates and no duplicate work."
       },
-      {
-        match: ["received", "receive", "arrival", "dock", "check in"],
-        topic: "receive",
-        reply:
-          "We need an easy way to mark a return as Received, and we should scan/enter a tracking code to link it to the request."
-      },
-      {
-        match: ["inspection", "verify", "damage", "condition", "approve", "reject"],
-        topic: "inspection",
-        reply:
-          "After receiving, we must inspect: approved vs rejected, plus reason. That decision should update the customer status."
-      },
-      {
-        match: ["inventory", "stock", "restock", "resell"],
-        topic: "inventory",
-        reply:
-          "If the item is approved and resellable, inventory should be updated. For MVP, a placeholder note is fine."
-      },
-      {
-        match: ["exceptions", "damaged", "missing", "wrong item"],
-        topic: "exceptions",
-        reply:
-          "Rejected returns should include a reason and optionally photos (future). For MVP, reason text is enough."
-      },
-      {
-        match: ["barcode", "scan", "scanner", "label"],
-        topic: "barcode",
-        reply:
-          "Barcode scanning should pull up the exact return request immediately, otherwise processing slows down."
-      },
-      {
-        match: [],
-        reply:
-          "Our workflow is: Receive → Inspect → Mark outcome → Update status. It must be quick and consistent."
-      }
-    ],
+      default: [
+        {
+          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+          topic: "greeting",
+          reply:
+            "Hello. I can explain our receiving and inspection flow. Ask about scanning, inspection, or exceptions."
+        },
+        {
+          match: ["received", "receive", "arrival", "dock", "check in"],
+          topic: "receive",
+          reply:
+            "We need an easy way to mark a return as Received, and we should scan/enter a tracking code to link it to the request."
+        },
+        {
+          match: ["inspection", "verify", "damage", "condition", "approve", "reject"],
+          topic: "inspection",
+          reply:
+            "After receiving, we must inspect: approved vs rejected, plus reason. That decision should update the customer status."
+        },
+        {
+          match: ["inventory", "stock", "restock", "resell"],
+          topic: "inventory",
+          reply:
+            "If the item is approved and resellable, inventory should be updated. For MVP, a placeholder note is fine."
+        },
+        {
+          match: ["exceptions", "damaged", "missing", "wrong item"],
+          topic: "exceptions",
+          reply:
+            "Rejected returns should include a reason and optionally photos (future). For MVP, reason text is enough."
+        },
+        {
+          match: ["barcode", "scan", "scanner", "label"],
+          topic: "barcode",
+          reply:
+            "Barcode scanning should pull up the exact return request immediately, otherwise processing slows down."
+        },
+        {
+          match: [],
+          reply:
+            "Our workflow is: Receive → Inspect → Mark outcome → Update status. It must be quick and consistent."
+        }
+      ]
+    },
 
-    manager: [
-      {
-        match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
-        topic: "greeting",
-        reply:
-          "Hi. I can outline priorities, risks, and success metrics. Ask about scope or policy."
+    manager: {
+      Tester: {
+        sequence: [
+          "Returns getting stuck. If no one knows who owns the next step, delays pile up fast.",
+          "A return existing without a clear status or owner. That’s how issues escalate.",
+          "When every return moves predictably from request to refund without manual chasing."
+        ],
+        fallback: "Process consistency and clear ownership are my top concerns."
       },
-      {
-        match: ["success", "criteria", "kpi", "metric"],
-        topic: "metrics",
-        reply:
-          "Success means fewer manual steps, faster cycle time, and fewer customer complaints. Status visibility is key."
-      },
-      {
-        match: ["scope", "mvp", "capacity", "trade-off", "tradeoff", "prioritize"],
-        topic: "scope",
-        reply:
-          "Keep MVP focused on the happy path: submit return, label, tracking statuses, warehouse verify, refund placeholder."
-      },
-      {
-        match: ["risk", "failure", "edge case", "exceptions"],
-        topic: "risks",
-        reply:
-          "Risks include unclear eligibility rules and inconsistent status updates. Ensure the UI explains rules at each step."
-      },
-      {
-        match: ["analytics", "dashboard", "report", "insights"],
-        topic: "analytics",
-        reply:
-          "Analytics is nice-to-have. Prioritize core flow first, then add a basic view of reasons/volume as a placeholder."
-      },
-      {
-        match: ["refund", "policy", "timeline"],
-        topic: "refund",
-        reply:
-          "Refund policy should be explicit so support and customers are aligned on timing and expectations."
-      },
-      {
-        match: [],
-        reply:
-          "Prioritize: customer UX, operational clarity, and consistent statuses. Make trade-offs explicit in your notes."
-      }
-    ]
+      default: [
+        {
+          match: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+          topic: "greeting",
+          reply:
+            "Hi. I can outline priorities, risks, and success metrics. Ask about scope or policy."
+        },
+        {
+          match: ["success", "criteria", "kpi", "metric"],
+          topic: "metrics",
+          reply:
+            "Success means fewer manual steps, faster cycle time, and fewer customer complaints. Status visibility is key."
+        },
+        {
+          match: ["scope", "mvp", "capacity", "trade-off", "tradeoff", "prioritize"],
+          topic: "scope",
+          reply:
+            "Keep MVP focused on the happy path: submit return, label, tracking statuses, warehouse verify, refund placeholder."
+        },
+        {
+          match: ["risk", "failure", "edge case", "exceptions"],
+          topic: "risks",
+          reply:
+            "Risks include unclear eligibility rules and inconsistent status updates. Ensure the UI explains rules at each step."
+        },
+        {
+          match: ["analytics", "dashboard", "report", "insights"],
+          topic: "analytics",
+          reply:
+            "Analytics is nice-to-have. Prioritize core flow first, then add a basic view of reasons/volume as a placeholder."
+        },
+        {
+          match: ["refund", "policy", "timeline"],
+          topic: "refund",
+          reply:
+            "Refund policy should be explicit so support and customers are aligned on timing and expectations."
+        },
+        {
+          match: [],
+          reply:
+            "Prioritize: customer UX, operational clarity, and consistent statuses. Make trade-offs explicit in your notes."
+        }
+      ]
+    }
   }
 };
 
@@ -1426,7 +1456,7 @@ function screenScenarioOverview() {
   const resolvedScenario = isTemplateView ? scen : applyScenarioOverrides(scen);
   const displayTitle = getScenarioDisplayTitle(resolvedScenario, { preferInstance: !isTemplateView });
   const subtitle = displayTitle;
-  const backRoute = state.nav.params.from === "templates" ? "templates" : "home";
+  const backRoute = state.nav.params.from === "templates" ? "templates" : state.nav.params.from === "hub" ? "hub" : "home";
   const isActiveInstance = !!state.activeScenario[scen.id]?.isActive;
   const canActivate = scen.active || isCustomScenario(scen.id);
 
@@ -3122,7 +3152,8 @@ function bindHub() {
   document.querySelectorAll("[data-go]").forEach(card => {
     card.addEventListener("click", () => {
       const r = card.getAttribute("data-go");
-      setRoute(r);
+      const params = r === "overview" ? { from: "hub" } : {};
+      setRoute(r, params);
     });
   });
 }
