@@ -1456,7 +1456,7 @@ function screenScenarioOverview() {
   const resolvedScenario = isTemplateView ? scen : applyScenarioOverrides(scen);
   const displayTitle = getScenarioDisplayTitle(resolvedScenario, { preferInstance: !isTemplateView });
   const subtitle = displayTitle;
-  const backRoute = state.nav.params.from === "templates" ? "templates" : "home";
+  const backRoute = state.nav.params.from === "templates" ? "templates" : state.nav.params.from === "hub" ? "hub" : "home";
   const isActiveInstance = !!state.activeScenario[scen.id]?.isActive;
   const canActivate = scen.active || isCustomScenario(scen.id);
 
@@ -3152,7 +3152,8 @@ function bindHub() {
   document.querySelectorAll("[data-go]").forEach(card => {
     card.addEventListener("click", () => {
       const r = card.getAttribute("data-go");
-      setRoute(r);
+      const params = r === "overview" ? { from: "hub" } : {};
+      setRoute(r, params);
     });
   });
 }
